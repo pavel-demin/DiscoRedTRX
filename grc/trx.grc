@@ -1312,6 +1312,49 @@
     </param>
   </block>
   <block>
+    <key>analog_probe_avg_mag_sqrd_x</key>
+    <param>
+      <key>alpha</key>
+      <value>0.001</value>
+    </param>
+    <param>
+      <key>alias</key>
+      <value></value>
+    </param>
+    <param>
+      <key>comment</key>
+      <value></value>
+    </param>
+    <param>
+      <key>affinity</key>
+      <value></value>
+    </param>
+    <param>
+      <key>_enabled</key>
+      <value>True</value>
+    </param>
+    <param>
+      <key>_coordinate</key>
+      <value>(888, 421)</value>
+    </param>
+    <param>
+      <key>_rotation</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>id</key>
+      <value>rx_meter</value>
+    </param>
+    <param>
+      <key>threshold</key>
+      <value>0</value>
+    </param>
+    <param>
+      <key>type</key>
+      <value>f</value>
+    </param>
+  </block>
+  <block>
     <key>rx_ssb</key>
     <param>
       <key>alias</key>
@@ -1534,6 +1577,12 @@
   <connection>
     <source_block_id>blks2_selector_1</source_block_id>
     <sink_block_id>analog_agc_xx_0</sink_block_id>
+    <source_key>0</source_key>
+    <sink_key>0</sink_key>
+  </connection>
+  <connection>
+    <source_block_id>blks2_selector_1</source_block_id>
+    <sink_block_id>rx_meter</sink_block_id>
     <source_key>0</source_key>
     <sink_key>0</sink_key>
   </connection>

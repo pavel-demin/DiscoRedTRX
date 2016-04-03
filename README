@@ -4,4 +4,5 @@ wget https://github.com/pavel-demin/DiscoRedTRX/archive/master.tar.gz
 tar -zxf master.tar.gz
 cd DiscoRedTRX-master
 make
+export GRC_BLOCKS_PATH=grc
 python main.py

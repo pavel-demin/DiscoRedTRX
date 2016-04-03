@@ -1,0 +1,7 @@
+Commands to install and run this program on Red Pitaya:
+
+wget https://github.com/pavel-demin/DiscoRedTRX/archive/master.tar.gz
+tar -zxf master.tar.gz
+cd DiscoRedTRX-master
+make
+python main.py

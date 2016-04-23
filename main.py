@@ -16,10 +16,10 @@ cutoff = [
     {0:[-2500, 2500], 1:[-3000, 3000], 2:[-3500, 3500], 3:[-4000, 4000], 4:[-4500, 4500], 5:[-5000, 5000], 6:[-6000, 6000], 7:[-8000, 8000], 8:[-9000, 9000], 9:[-10000, 10000]}
 ]
 
-playback = alsaaudio.Mixer('Master')
+playback = alsaaudio.Mixer('Speaker')
 playback.setvolume(50)
 
-recording = alsaaudio.Mixer('Capture')
+recording = alsaaudio.Mixer('Mic')
 recording.setvolume(50)
 
 tb = trx()

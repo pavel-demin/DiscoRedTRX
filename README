@@ -1,5 +1,6 @@
 Commands to install and run this program on Red Pitaya:
 
+apt-get install make python-serial python-alsaaudio
 wget https://github.com/pavel-demin/DiscoRedTRX/archive/master.tar.gz
 tar -zxf master.tar.gz
 cd DiscoRedTRX-master

@@ -6,5 +6,5 @@ tar -zxf master.tar.gz
 cd DiscoRedTRX-master
 export PYTHONPATH=grc
 export GRC_BLOCKS_PATH=grc
-make
+make -C grc
 python main.py

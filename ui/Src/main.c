@@ -1,7 +1,7 @@
 //--------------------------------------------------------------
 // File     : main.c
-// Datum    : 25.02.2016
-// Version  : 0.1
+// Datum    : 26.04.2016
+// Version  : 0.2
 // Autor    : Wolfgang Kiefer
 // EMail    : woki@onlinehome.de
 // Web      : www.wkiefer.de
@@ -31,16 +31,17 @@ void create_ChildWindow_12AM(void);// Bandwidth selection
 void create_ChildWindow_13(void);// AGC selection
 void create_ChildWindow_14(void);// Frequency input/actualisation
 void create_ChildWindow_15(void);// Settings
+void create_ChildWindow_18(void);// CW- Keyer
 
 // Globale Pointer
 SWINDOW_t *MAIN;
 SLISTBOX_t *lb,*lb1,*lb2,*lb12,*lb22,*lb3,*lb13;  // pointer auf Listbox
-SBUTTON_t *btn, *btn9,*btn10,*btn11,*btn12,*btn13;  // pointer auf buttons
+SBUTTON_t *btn, *btn9,*btn10,*btn11,*btn12,*btn13,*cwbtn, *btnX;  // pointer auf buttons
 SGRAPH_t *graph;
 SDROPDOWN_t *dd1;
 SRBTN_t *rb1,*rb2,*rb3,*rb161,*rb162,*rb163;
 SSLIDER_t *bright, *mic;
-SWINDOW_t *ptr11,*ptr12,*ptr12,*ptr13,*ptr14,*ptr15,*ptr16,*ptr17,*ptr_16;
+SWINDOW_t *ptr11,*ptr12,*ptr12,*ptr13,*ptr14,*ptr15,*ptr16,*ptr17,*ptr18;
 
 // Globale Steuervariablen
 uint8_t ModeNr=2;// 0 = CWL, 1=CWU, 2=LSB, 3=USB, 4=AM, 5=FM, 6=Digi
@@ -50,8 +51,16 @@ uint8_t BWNrCW=5;
 uint8_t BWNrAM=5;
 uint8_t split=0;// 0 RXfrequ =TXfrequ.
 uint8_t AGCmode;
+union {
 uint32_t frequencyA;
+char frequencyAChar[4];
+} unionA;
+
+union {
 uint32_t frequencyB;
+char frequencyBChar[4];
+} unionB;
+
 uint32_t helpFreq;
 char FrequCharA[13]="A 03.663.000";
 char FrequCharB[13]="B 07.200.000";
@@ -270,6 +279,7 @@ int main(void)
   create_ChildWindow_14();
   create_ChildWindow_15();
   //create_ChildWindow_16();
+  create_ChildWindow_18();
 
   // erstes Window anzeigen
   SGUI_WindowShow(1);
@@ -281,9 +291,9 @@ int main(void)
       //pointer=(char*) &TestArray[0];
       if(pointer != oldpointer){
         oldpointer=pointer;
-        if(pointer[0]=='D')
+        if(pointer[0]== 2)
            ShowFFT();
-        if(pointer[0]=='S')
+        if(pointer[0]== 1)
             ShowSignalStrength();
       }
   }
@@ -310,34 +320,44 @@ void Brightness(void){
 
 void MicVol(void){
   MicVolumSet=SGUI_SliderGetValue(mic);// ((Send microphone volume control to Red Pitaya))
-  UB_Uart_SendByte(COM6,'R');
+  UB_Uart_SendByte(COM6,4);
   MicVolChar[0]=(char)('0' + MicVolumSet);
-  //MicVolChar[1]=(char)('0' + MicVolumSet % 10);
-  UB_Uart_SendByte(COM6,MicVolChar[0]);
-  //UB_Uart_SendByte(COM6,MicVolChar[1]);
-  UB_Uart_SendByte(COM6,0x0A);//     LF*/
+  UB_Uart_SendByte(COM6,0);
+  UB_Uart_SendByte(COM6,0);
+  UB_Uart_SendByte(COM6,0);
+  UB_Uart_SendByte(COM6,MicVolumSet);
+  UB_Uart_SendByte(COM6,0); // instead of CRC8
+  //UB_Uart_SendByte(COM6,0x0A);//     LF
 }
 
 void Volume(void){
-  VolumSet=SGUI_SliderGetValue(volume);// ((Send volume control to Red Pitaya))
-  UB_Uart_SendByte(COM6,'P');
+  VolumSet=SGUI_SliderGetValue(volume);// ((Send speaker volume control to Red Pitaya))
+  UB_Uart_SendByte(COM6,3);
   VolChar[0]=(char)('0' + VolumSet);
-    //VolChar[1]=(char)('0' + VolumSet % 10);
-  UB_Uart_SendByte(COM6,VolChar[0]);
-    //UB_Uart_SendByte(COM6,VolChar[1]);
-  UB_Uart_SendByte(COM6,0x0A);//     LF*/
+  UB_Uart_SendByte(COM6,0);
+  UB_Uart_SendByte(COM6,0);
+  UB_Uart_SendByte(COM6,0);
+  UB_Uart_SendByte(COM6,VolumSet);
+  UB_Uart_SendByte(COM6,0); // instead of CRC8
+  //UB_Uart_SendByte(COM6,0x0A);//     LF
 }
 
 void ModeSelectRdy(uint16_t zeile){
   uint8_t nr;// Mode Nr.
-  char txt[3]="M0";
+  char txt[3];
+  UB_Uart_SendByte(COM6,6);// "Mode Nr"
+  UB_Uart_SendByte(COM6,0);// Send Mode control to Red Pitaya
+  UB_Uart_SendByte(COM6,0);
+  UB_Uart_SendByte(COM6,0);
+
 
   ModeNr = zeile;
   ModeTxt=SGUI_ListboxGetItem(lb1,zeile);
   SGUI_ButtonSetText(btn11,ModeTxt);
   nr=(uint8_t)SGUI_ListboxGetAktivItemNr(lb1);
+  UB_Uart_SendByte(COM6,nr);
+  UB_Uart_SendByte(COM6,0); // instead of CRC8
   txt[1]=nr+48;//                + "0"
-  UB_Uart_SendString(COM6,&txt[0],LF);// Send Mode control to Red Pitaya
 
   if(ModeNr<=1){
     BWNr=BWNrCW;
@@ -357,9 +377,12 @@ void ModeSelectRdy(uint16_t zeile){
     BWTxt=SGUI_ListboxGetItem(lb22,BWNrAM);
   }
   SGUI_ButtonSetText(btn12,BWTxt);// aktuelle Bandbreite anzeigen
-  UB_Uart_SendByte(COM6,'F');    // Send bandwidth control to Red Pitaya
-  UB_Uart_SendByte(COM6,'9'-BWNr);//'9' ... '0'
-  UB_Uart_SendByte(COM6,0x0A);//     LF
+  UB_Uart_SendByte(COM6,5);    // Send filter bandwidth control to Red Pitaya
+  UB_Uart_SendByte(COM6,0);
+  UB_Uart_SendByte(COM6,0);
+  UB_Uart_SendByte(COM6,0);
+  UB_Uart_SendByte(COM6,9-BWNr);//'9' ... '0'
+  UB_Uart_SendByte(COM6,0);//    instead of CRC8
 
 }
 
@@ -384,6 +407,15 @@ void BWSelect(bool aktiv) {
   }
 }
 
+void CW_Keyer(bool aktiv) {
+  if(aktiv==true){
+    SGUI_WindowShow(18);//
+  }
+    else{
+        SGUI_WindowShow(1); // main-window anzeigen
+      }
+}
+
 void BWSelectRdy(uint16_t zeile){
 
 
@@ -401,9 +433,12 @@ void BWSelectRdy(uint16_t zeile){
     BWNr=(uint8_t)SGUI_ListboxGetAktivItemNr(lb22);
   }
   SGUI_ButtonSetText(btn12,BWTxt);// aktuelle Bandbreite anzeigen
-  UB_Uart_SendByte(COM6,'F');    // Send bandwidth control to Red Pitaya
-  UB_Uart_SendByte(COM6,'9'-BWNr);//'9' ... '0'
-  UB_Uart_SendByte(COM6,0x0A);//     LF
+  UB_Uart_SendByte(COM6,5);    // Send filter bandwidth control to Red Pitaya
+  UB_Uart_SendByte(COM6,0);
+  UB_Uart_SendByte(COM6,0);
+  UB_Uart_SendByte(COM6,0);
+  UB_Uart_SendByte(COM6,9-BWNr);//'9' ... '0'
+  UB_Uart_SendByte(COM6,0);//    instead of CRC8
 }
 
 
@@ -418,7 +453,7 @@ void AGCSelect(bool aktiv) {
   }
 }
 
-void AGCSelectRdy(uint16_t zeile){
+void AGCSelectRdy(uint16_t zeile){// for future extensions
   uint8_t nr;
   char txt[3]="G0";
 
@@ -427,16 +462,24 @@ void AGCSelectRdy(uint16_t zeile){
   SGUI_ButtonSetText(btn13,AGCtxt);
   nr=(uint8_t)SGUI_ListboxGetAktivItemNr(lb13);
   txt[1]=nr+48;//                + "0"
-  UB_Uart_SendString(COM6,&txt[0],LF);//        Send AGC control to Red Pitaya
+  //UB_Uart_SendString(COM6,&txt[0],LF);//        Send AGC control to Red Pitaya
 }
 
-void PreampRdy(){
-  if(SGUI_RadioButtonIsAktiv(rb1))
-    UB_Uart_SendString(COM6,"P0",LF);
-  else if(SGUI_RadioButtonIsAktiv(rb2))
-    UB_Uart_SendString(COM6,"P9",LF);
-  else UB_Uart_SendString(COM6,"P1",LF);
-
+void PreampRdy(){// for future improvements
+  UB_Uart_SendByte(COM6,11);    // Send preamp/attenuator control to Red Pitaya
+  UB_Uart_SendByte(COM6,0);
+  UB_Uart_SendByte(COM6,0);
+  UB_Uart_SendByte(COM6,0);
+  if(SGUI_RadioButtonIsAktiv(rb1)){
+    UB_Uart_SendByte(COM6,0);// Send preamp off control to Red Pitaya
+  }
+  else if(SGUI_RadioButtonIsAktiv(rb2)){
+    UB_Uart_SendByte(COM6,1);// Send preamp on control to Red Pitaya
+  }
+  else {
+    UB_Uart_SendByte(COM6,2);// Send attenuator on control to Red Pitaya
+  }
+  UB_Uart_SendByte(COM6,0);//    instead of CRC8
 }
 
 void Settings(bool aktiv) {
@@ -455,29 +498,29 @@ void SendFreq(){
   uint8_t i;
 
   if(split==0){ //RXfrequ = TXfrequ = FrequA
-    UB_Uart_SendByte(COM6,'1');// Send frequency control to Red Pitaya
-    for(i=2;i<12;i++){
-      if(FrequCharA[i] != '.' ) UB_Uart_SendByte(COM6,FrequCharA[i]);
+    UB_Uart_SendByte(COM6,1);// Send frequency control to Red Pitaya
+    for(i=0;i<4;i++){
+      UB_Uart_SendByte(COM6, unionA.frequencyAChar[i]);
     }
-    UB_Uart_SendByte(COM6,0x0A);//     LF
-    UB_Uart_SendByte(COM6,'2');// Send frequency control to Red Pitaya
-    for(i=2;i<12;i++){
-      if(FrequCharA[i] != '.' ) UB_Uart_SendByte(COM6,FrequCharA[i]);
+    UB_Uart_SendByte(COM6,0);//    instead of CRC8
+    UB_Uart_SendByte(COM6,2);// Send frequency control to Red Pitaya
+    for(i=0;i<4;i++){
+      UB_Uart_SendByte(COM6,unionA.frequencyAChar[i]);
     }
-    UB_Uart_SendByte(COM6,0x0A);//     LF
+    UB_Uart_SendByte(COM6,0);//    instead of CRC8
   }
 
   else{// RXfrequ=FrequA   TXfreq=FreqB
-    UB_Uart_SendByte(COM6,'1');// Send frequency control to Red Pitaya
-    for(i=2;i<12;i++){
-      if(FrequCharA[i] != '.' ) UB_Uart_SendByte(COM6,FrequCharA[i]);
+    UB_Uart_SendByte(COM6,1);// Send frequency control to Red Pitaya
+    for(i=0;i<4;i++){
+      UB_Uart_SendByte(COM6,unionA.frequencyAChar[i]);
     }
-    UB_Uart_SendByte(COM6,0x0A);//     LF
-    UB_Uart_SendByte(COM6,'2');// Send frequency control to Red Pitaya
-    for(i=2;i<12;i++){
-      if(FrequCharB[i] != '.' ) UB_Uart_SendByte(COM6,FrequCharB[i]);
+    UB_Uart_SendByte(COM6,0);//    instead of CRC8
+    UB_Uart_SendByte(COM6,2);// Send frequency control to Red Pitaya
+    for(i=0;i<4;i++){
+      UB_Uart_SendByte(COM6,unionB.frequencyBChar[i]);
     }
-    UB_Uart_SendByte(COM6,0x0A);//     LF
+    UB_Uart_SendByte(COM6,0);//    instead of CRC8
   }
 
 
@@ -615,11 +658,98 @@ void Split(bool aktiv){//toggle split flag
   }
 }
 
+void Tune(bool aktiv){// +++++ Tune command to Red Pitaya +++++
+  if(aktiv==true){
+    UB_Uart_SendByte(COM6,7);// Set PTT Bit
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,1);
+    UB_Uart_SendByte(COM6,0);//    instead of CRC8
+    UB_Uart_SendByte(COM6,8);// Set Transmitter on
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,1);
+    UB_Uart_SendByte(COM6,0);//    instead of CRC8
+  }
+  else{
+    UB_Uart_SendByte(COM6,8);// Set Transmitter off
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);//    instead of CRC8
+    UB_Uart_SendByte(COM6,7);// Reset PTT Bit
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);//    instead of CRC8
+  }
+}
+
 void PTT(bool aktiv){// +++++ PTT to Red Pitaya +++++
   if(aktiv==true){
-    UB_Uart_SendString(COM6,"T1",LF);
+    if(ModeNr<2){// only CW- modes:
+      UB_Uart_SendByte(COM6,8);// Set Transmitter off
+      UB_Uart_SendByte(COM6,0);
+      UB_Uart_SendByte(COM6,0);
+      UB_Uart_SendByte(COM6,0);
+      UB_Uart_SendByte(COM6,0);
+      UB_Uart_SendByte(COM6,0);//    instead of CRC8
+    }
+    UB_Uart_SendByte(COM6,7);// Set PTT Bit
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,1);
+    UB_Uart_SendByte(COM6,0);//    instead of CRC8
+    if(ModeNr>1){//non CW- modes
+      UB_Uart_SendByte(COM6,8);// Set Transmitter on
+      UB_Uart_SendByte(COM6,0);
+      UB_Uart_SendByte(COM6,0);
+      UB_Uart_SendByte(COM6,0);
+      UB_Uart_SendByte(COM6,1);
+      UB_Uart_SendByte(COM6,0);//    instead of CRC8
+    }
+
   }
-  else UB_Uart_SendString(COM6,"T0",LF);
+  else{
+    UB_Uart_SendByte(COM6,8);// Set Transmitter off
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);//    instead of CRC8
+    UB_Uart_SendByte(COM6,7);// Reset PTT Bit
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);//    instead of CRC8
+  }
+
+}
+
+void Mute(bool aktiv){// +++++ PTT to Red Pitaya +++++
+  if(aktiv==true){
+    UB_Uart_SendByte(COM6,3);// Set Volume to Null
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);//    instead of CRC8
+  }
+  else{
+    UB_Uart_SendByte(COM6,3);// Set Volume to old value
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,VolumSet);
+    UB_Uart_SendByte(COM6,0);//    instead of CRC8
+  }
+
 }
 //--------------------------------------------------------------
 void create_MainWindow_01(void) {
@@ -641,7 +771,7 @@ void create_MainWindow_01(void) {
   ;
   SGUI_ButtonSetText(btn2,"Mute");
   SGUI_ButtonSetMode(btn2,SBUTTON_PUSHPULL);
-
+  SGUI_ButtonSetHandler(btn2,Mute);
 
   btn4=SGUI_ButtonCreate(2,0,41,22); // button
   SGUI_ButtonSetText(btn4,"Run");
@@ -657,7 +787,8 @@ void create_MainWindow_01(void) {
 
   btn6=SGUI_ButtonCreate(240,0,72,22); // button
 
-  SGUI_ButtonSetText(btn6,"Freece");
+  SGUI_ButtonSetText(btn6,"Keyer");
+  SGUI_ButtonSetHandler(btn6,CW_Keyer);
 
   btn7=SGUI_ButtonCreate(316,0,90,22); // button
 
@@ -667,6 +798,7 @@ void create_MainWindow_01(void) {
   SGUI_ButtonSetColor(btn8, RGB_COL_GREEN, RGB_COL_RED);
   SGUI_ButtonSetText(btn8,"Tune");
   SGUI_ButtonSetMode(btn8,SBUTTON_PUSHPULL);
+  SGUI_ButtonSetHandler(btn8,Tune);
 
   graph=SGUI_GraphCreate(0,23,480,FFTHeight); // graph
 
@@ -905,10 +1037,10 @@ void FrequShift(uint32_t freqShift){
 char Freq[9]="000000000";
 
   if(FrequChar[0]=='A') {
-    frequencyA=MakeFreq(FrequChar);// make frequency as integer
-    helpFreq=frequencyA+freqShift;
+    unionA.frequencyA=MakeFreq(FrequChar);// make frequency as integer
+    helpFreq=unionA.frequencyA+freqShift;
     if((0<=helpFreq)&&(helpFreq <=61440000)){
-      frequencyA=  helpFreq;
+      unionA.frequencyA=  helpFreq;
       itoa(helpFreq+100000000,Freq,10);// to create leading Zeroes
       z1[0]=Freq[8];
       z2[0]=Freq[7];
@@ -924,10 +1056,10 @@ char Freq[9]="000000000";
     else return;
   }
   else{
-    frequencyB=MakeFreq(FrequChar);
-    helpFreq=frequencyB+freqShift;
+    unionB.frequencyB=MakeFreq(FrequChar);
+    helpFreq=unionB.frequencyB+freqShift;
     if((0<=helpFreq)&&(helpFreq <=61440000)){
-      frequencyB=  helpFreq;
+      unionB.frequencyB=  helpFreq;
       itoa(helpFreq+100000000,Freq,10);
       z1[0]=Freq[8];
       z2[0]=Freq[7];
@@ -1440,12 +1572,33 @@ void create_ChildWindow_14(void) {// Frequenzeingabe
 
   SGUI_ButtonSetColor(bt8,RGB_COL_BLACK,0x076CE);// Cursor setzen
 
-
-
   btn=SGUI_ButtonCreate(210,4,60,40); // ok-button
   SGUI_ButtonSetText(btn,"OK");
   SGUI_ButtonSetHandler(btn,btn_Freqfkt);
 }
+
+void Exit(bool aktiv);
+
+void Exit2(bool aktiv){
+  if(aktiv==true) {
+    SGUI_ButtonSetText(btnX,"stopped");
+    SGUI_ButtonSetHandler(btnX,Exit);
+    UB_Uart_SendByte(COM6,9);// Red Pitaya: Exit from main.py
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,1);
+    UB_Uart_SendByte(COM6,0);//    instead of CRC8
+  }
+}
+
+void Exit(bool aktiv){
+  if(aktiv==true) {
+    SGUI_ButtonSetText(btnX,"shure?");
+    SGUI_ButtonSetHandler(btnX,Exit2);
+  }
+}
+
 //----------------------------------------------------- Settings ---------
 void create_ChildWindow_15(void) {
 
@@ -1491,9 +1644,49 @@ void create_ChildWindow_15(void) {
   SGUI_SliderSetMinMax(mic,0,9);
   SGUI_SliderSetHandler(mic,MicVol);
 
+  btnX=SGUI_ButtonCreate(260,84,85,38); // Exit Button
+  SGUI_ButtonSetText(btnX,"Exit");
+  SGUI_ButtonSetHandler(btnX,Exit);
+
   btn=SGUI_ButtonCreate(260,4,50,50); // ok-button
   SGUI_ButtonSetText(btn,"OK");
   SGUI_ButtonSetHandler(btn,btn_fkt);
 }
 
-//--------------------------------------------------------------
+void MorseKey(bool aktiv){
+  if(aktiv==true){
+    UB_Uart_SendByte(COM6,8);// Set Transmitter on
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,1);
+    UB_Uart_SendByte(COM6,0);//    instead of CRC8
+  }
+  else{
+    UB_Uart_SendByte(COM6,8);// Set Transmitter off
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);//    instead of CRC8
+  }
+
+}
+
+void create_ChildWindow_18(void) {
+
+  ptr18=SGUI_WindowCreateChild(18,0,10,400,260); // Child-Window (Nr=15)
+  SGUI_WindowSetColor(ptr15,RGB_COL_BLACK,0x076CE);
+  SGUI_TextSetCursor(10,4);
+  SGUI_TextCreateString("CW- Keyer");    // Beschriftung
+  cwbtn=SGUI_ButtonCreate(120,112,120,60); // button
+  SGUI_ButtonSetFont(cwbtn, &Arial_16x25);
+  SGUI_ButtonSetColor(cwbtn, RGB_COL_GREEN, RGB_COL_RED);
+  SGUI_ButtonSetText(cwbtn,"Key");
+  SGUI_ButtonSetMode(cwbtn,SBUTTON_PUSH);
+  SGUI_ButtonSetHandler(cwbtn,MorseKey);
+
+  btn=SGUI_ButtonCreate(140,4,50,50); // ok-button
+  SGUI_ButtonSetText(btn,"OK");
+  SGUI_ButtonSetHandler(btn,btn_fkt);
+}//--------------------------------------------------------------

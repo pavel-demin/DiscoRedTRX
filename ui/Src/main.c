@@ -38,9 +38,9 @@ SLISTBOX_t *lb,*lb1,*lb2,*lb12,*lb22,*lb3,*lb13;  // pointer auf Listbox
 SBUTTON_t *btn, *btn9,*btn10,*btn11,*btn12,*btn13;  // pointer auf buttons
 SGRAPH_t *graph;
 SDROPDOWN_t *dd1;
-SRBTN_t *rb1,*rb2,*rb3;
-SSLIDER_t *bright;
-SWINDOW_t *ptr11,*ptr12,*ptr12,*ptr13,*ptr14,*ptr15,*ptr16,*ptr17;
+SRBTN_t *rb1,*rb2,*rb3,*rb161,*rb162,*rb163;
+SSLIDER_t *bright, *mic;
+SWINDOW_t *ptr11,*ptr12,*ptr12,*ptr13,*ptr14,*ptr15,*ptr16,*ptr17,*ptr_16;
 
 // Globale Steuervariablen
 uint8_t ModeNr=2;// 0 = CWL, 1=CWU, 2=LSB, 3=USB, 4=AM, 5=FM, 6=Digi
@@ -88,8 +88,24 @@ char f1[7];
 
 uint8_t StopCount=9;// Control for Backlight Dim (1..18)
 uint8_t  count=0;
-uint16_t VolumSet=512;// Control for volume (0 .. 1024)
+uint8_t VolumSet=5;// Control for volume (0 .. 9)
+char  VolChar[3]="50";
 SSLIDER_t *volume;
+uint8_t MicVolumSet=5;// Control for volume (0 .. 9)
+char  MicVolChar[3]="50";
+SSLIDER_t *Micvolume;
+uint8_t Out_Gain =5;
+char Mic_txt[9]="00000000";
+
+SGAUGE_t *SValGauge;
+uint16_t S_Value = 500;
+uint16_t S_max = 100;
+uint8_t  max;
+char  dBm_text[8]="- 53dBm";
+char S_Text[6]="S9+40";
+uint16_t count20000=0;// for 100 ms
+uint16_t count200000=0;// for 1 s
+SLABEL_t *label1, *label2;// S- Meter Texte
 
 //BandWidth values from Pavel Demin:
 //CW: 25, 50, 100, 250, 400, 500, 600, 750, 800, 1.0k
@@ -162,6 +178,66 @@ uint8_t calc;
     SGUI_GraphWriteColumn(graph,1,i,calc);// draw one column
   }
 }
+
+void ShowSignalStrength(void){
+uint8_t i, SNr;
+uint16_t S, dBmPlus;
+int16_t  S_Wert;
+
+  for(i=1;i<4;i++){      //  0    => 0 dBm
+    if(pointer[i]==0x0A) {//  1000 => -100 dBm
+      pointer[i]=0;
+      break;
+    }
+  }
+  S_Value=atoi(pointer[1]);// attention: S-Value is negative!!
+
+  if(S_max>S_Value) {
+    S_max=S_Value;//  quickly up
+    max=0;
+  }
+  else max--;
+  if(max>9){
+    max=0;
+    S_max+=5;//       slow down    Test- value 5 ***
+
+  }
+  if(count20000>20000){// timer 100 millisec
+    count20000=0;
+    S_Wert=1270-S_max;
+    if(S_Wert<0) S_Wert=0;
+    SGUI_GaugeSetValue(SValGauge,S_Wert);
+    count200000++;
+    if(count200000>10){// timer 1 sec
+      count200000=0;
+      S=S_max/10;
+      for(i=3;i>0;i--){
+          dBm_text[i]=(S%10)+48;//"ASCII 0"
+          S=S/10;
+      }
+      if(dBm_text[1]=='0')dBm_text[1]=' ';
+      SGUI_LabelSetText(label2,dBm_text);// "-  53dBm"   update String
+      SNr=9;
+      S_Text[3]=' ';
+      S_Text[4]=' ';
+      S_Text[2]=' ';
+      while(S_Wert<=730) {
+        SNr--;
+        S_Wert+=6;
+      }
+      if(SNr==9){
+        dBmPlus=(730-S_Wert)/10;
+        S_Text[4]=(dBmPlus%10)+48;
+        S_Text[3]=dBmPlus/10+48;
+        S_Text[2]='+';
+      }
+      S_Text[1]=SNr+48;//
+      SGUI_LabelSetText(label1,S_Text);// "S9+20"
+    }
+  }
+
+}
+
 void UB_TIMER2_ISR_CallBack(void){// von TIM2 aufgerufen (Interrupt 200 kHz)
   if(++count == StopCount)
     HAL_GPIO_WritePin(LCD_BL_CTRL_GPIO_PORT, LCD_BL_CTRL_PIN, 0);
@@ -193,6 +269,7 @@ int main(void)
   create_ChildWindow_13();
   create_ChildWindow_14();
   create_ChildWindow_15();
+  //create_ChildWindow_16();
 
   // erstes Window anzeigen
   SGUI_WindowShow(1);
@@ -204,7 +281,10 @@ int main(void)
       //pointer=(char*) &TestArray[0];
       if(pointer != oldpointer){
         oldpointer=pointer;
-        ShowFFT();
+        if(pointer[0]=='D')
+           ShowFFT();
+        if(pointer[0]=='S')
+            ShowSignalStrength();
       }
   }
 
@@ -228,11 +308,23 @@ void Brightness(void){
   StopCount=SGUI_SliderGetValue(bright);
 }
 
+void MicVol(void){
+  MicVolumSet=SGUI_SliderGetValue(mic);// ((Send microphone volume control to Red Pitaya))
+  UB_Uart_SendByte(COM6,'R');
+  MicVolChar[0]=(char)('0' + MicVolumSet);
+  //MicVolChar[1]=(char)('0' + MicVolumSet % 10);
+  UB_Uart_SendByte(COM6,MicVolChar[0]);
+  //UB_Uart_SendByte(COM6,MicVolChar[1]);
+  UB_Uart_SendByte(COM6,0x0A);//     LF*/
+}
+
 void Volume(void){
   VolumSet=SGUI_SliderGetValue(volume);// ((Send volume control to Red Pitaya))
-/*  UB_Uart_SendByte(COM6,'V');
-  UB_Uart_SendByte(COM6,VolumSet>>8);
-  UB_Uart_SendByte(COM6,VolumSet&255);
+  UB_Uart_SendByte(COM6,'P');
+  VolChar[0]=(char)('0' + VolumSet);
+    //VolChar[1]=(char)('0' + VolumSet % 10);
+  UB_Uart_SendByte(COM6,VolChar[0]);
+    //UB_Uart_SendByte(COM6,VolChar[1]);
   UB_Uart_SendByte(COM6,0x0A);//     LF*/
 }
 
@@ -357,7 +449,6 @@ void Settings(bool aktiv) {
     oldpointer=NULL;
   }
 }
-
 
 // ** Routinen für Frequenzeingabe **_____________________________________________________________
 void SendFreq(){
@@ -562,6 +653,7 @@ void create_MainWindow_01(void) {
 
   btn5a=SGUI_ButtonCreate(142,0,90,22); // button
   SGUI_ButtonSetText(btn5a,"Rec/Play");
+ // SGUI_ButtonSetHandler(btn5a,Audio);
 
   btn6=SGUI_ButtonCreate(240,0,72,22); // button
 
@@ -613,8 +705,8 @@ void create_MainWindow_01(void) {
 
   volume=SGUI_SliderCreate(176,165,200,30);// Volume
   SGUI_SliderSetColor(volume,RGB_COL_GREY,0x076CE);
-  SGUI_SliderSetMinMax(volume,0,1024);
-  SGUI_SliderSetStep(volume,32);
+  SGUI_SliderSetMinMax(volume,0,9);
+  SGUI_SliderSetStep(volume,1);
   SGUI_SliderSetValue(volume,VolumSet);
   SGUI_SliderSetHandler(volume, Volume);
 
@@ -801,12 +893,12 @@ SGUI_ButtonSetHandler(btn,btn_fkt);
 // Helper Frequenzeingabe
 
 void SetColorBtn(SBUTTON_t* ptr, char n){
+  SendFreq();                    // aktuelle Frequenz an RedPitaya senden
   SGUI_ButtonSetColor(ptr,RGB_COL_BLACK,0x076CE);// Cursor setzen (lindgrün)
   if(oldptr == ptr) return;
   SGUI_ButtonSetColor(oldptr,RGB_COL_BLACK,RGB_COL_GREY);// alten Cursor löschen
   oldptr=ptr;
   oldpos=n;
-  SendFreq();
 }
 
 void FrequShift(uint32_t freqShift){
@@ -1357,41 +1449,49 @@ void create_ChildWindow_14(void) {// Frequenzeingabe
 //----------------------------------------------------- Settings ---------
 void create_ChildWindow_15(void) {
 
-  ptr15=SGUI_WindowCreateChild(15,0,30,300,240); // Child-Window (Nr=15)
+  ptr15=SGUI_WindowCreateChild(15,0,10,400,260); // Child-Window (Nr=15)
   SGUI_WindowSetColor(ptr15,RGB_COL_BLACK,0x076CE);
   SGUI_TextSetCursor(10,4);
   SGUI_TextCreateString("Settings");    // Beschriftung
 
-  rb1=SGUI_RadioButtonCreate(10,40,20); // Mode
+  rb1=SGUI_RadioButtonCreate(10,30,20); // Mode
   SGUI_RadioButtonSetGroup(rb1,1);
   SGUI_RadioButtonSetHandler(rb1,PreampRdy);
-  SGUI_TextSetCursor(40,50);
+  SGUI_TextSetCursor(40,40);
   SGUI_TextCreateString("Normal");
   SGUI_RadioButtonSetAktiv(rb1);
-  rb2=SGUI_RadioButtonCreate(10,70,20); // Mode
+  rb2=SGUI_RadioButtonCreate(10,60,20); // Mode
   SGUI_RadioButtonSetGroup(rb2,1);
-  SGUI_TextSetCursor(40,80);
+  SGUI_TextSetCursor(40,70);
   SGUI_TextCreateString("Preamp +10dB");
   SGUI_RadioButtonSetHandler(rb2,PreampRdy);
-  rb3=SGUI_RadioButtonCreate(10,100,20); // Mode
+  rb3=SGUI_RadioButtonCreate(10,90,20); // Mode
   SGUI_RadioButtonSetGroup(rb3,1);
-  SGUI_TextSetCursor(40,110);
+  SGUI_TextSetCursor(40,100);
   SGUI_TextCreateString("Attenuator -20dB");
   SGUI_RadioButtonSetHandler(rb3,PreampRdy);
 
-  SGUI_TextSetCursor(10,140);
+  SGUI_TextSetCursor(10,130);
   SGUI_TextCreateString("Brightness");
 
-  bright=SGUI_SliderCreate(10,165,200,30);// Volume
+  bright=SGUI_SliderCreate(10,150,200,30);// Brigthness
   SGUI_SliderSetColor(bright,RGB_COL_GREY,RGB_COL_BLUE);
   SGUI_SliderSetStep(bright,1);
   SGUI_SliderSetValue(bright,StopCount);
   SGUI_SliderSetMinMax(bright,1,18);
   SGUI_SliderSetHandler(bright,Brightness);
 
+  SGUI_TextSetCursor(10,195);
+  SGUI_TextCreateString("Microphone Volume");
 
+  mic=SGUI_SliderCreate(10,215,220,30);// Microphone Volume
+  SGUI_SliderSetColor(mic,RGB_COL_GREY,RGB_COL_BLUE);
+  SGUI_SliderSetStep(mic,1);
+  SGUI_SliderSetValue(mic,MicVolumSet);
+  SGUI_SliderSetMinMax(mic,0,9);
+  SGUI_SliderSetHandler(mic,MicVol);
 
-  btn=SGUI_ButtonCreate(140,4,50,50); // ok-button
+  btn=SGUI_ButtonCreate(260,4,50,50); // ok-button
   SGUI_ButtonSetText(btn,"OK");
   SGUI_ButtonSetHandler(btn,btn_fkt);
 }

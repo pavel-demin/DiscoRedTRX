@@ -19,8 +19,8 @@
 //   1 = enable
 //   0 = disable
 //--------------------------------------------------------------
-#define   USE_UART1       1   // COM1 (VCP bei STM32F746-Disco)
-#define   USE_UART6       0   // COM6
+#define   USE_UART1       0   // COM1 (VCP bei STM32F746-Disco)
+#define   USE_UART6       1   // COM6
 #define   USE_UART7       0   // COM7
 
 
@@ -102,7 +102,7 @@ typedef enum {
 //--------------------------------------------------------------
 // Defines fuer das Empfangen
 //--------------------------------------------------------------
-#define  RX_BUF_SIZE   100   // Groesse vom RX-Puffer in Bytes
+#define  RX_BUF_SIZE   482   // Groesse vom RX-Puffer in Bytes ** WK war 100
 #define  RX_FIRST_CHR  0x20  // erstes erlaubte Zeichen (Ascii-Wert)
 #define  RX_LAST_CHR   0x7E  // letztes erlaubt Zeichen (Ascii-Wert)
 #define  RX_END_CHR    0x0D  // Endekennung (Ascii-Wert)
@@ -119,7 +119,7 @@ void UB_Uart_SendString(UART_NAME_t uart, char *ptr, UART_LASTBYTE_t end_cmd);
 UART_RXSTATUS_t UB_Uart_ReceiveString(UART_NAME_t uart, char *ptr);
 void UB_Uart_SendArray(UART_NAME_t uart, uint8_t *data, uint16_t cnt);
 uint32_t UB_Uart_ReceiveArray(UART_NAME_t uart, uint8_t *data);
-
+uint8_t *UB_Uart_ReceiveUART6(void); // ** WK
 
 
 //--------------------------------------------------------------

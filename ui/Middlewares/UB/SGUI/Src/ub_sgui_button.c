@@ -172,11 +172,12 @@ void SGUI_ButtonSetColor(SBUTTON_t* ptr, uint16_t c1, uint16_t c2)
 void SGUI_ButtonSetText(SBUTTON_t* ptr, char* txt)
 {
   if(ptr==NULL) return;
-
+  ptr->status|=SBTN_BIT_REDRAW;  // redraw at next loop
+  SGUI_BUTTON.update=true; // ** WK Update in jedem Fall
   if(txt!=ptr->txt_ptr) {
     ptr->txt_ptr=txt;
-    ptr->status|=SBTN_BIT_REDRAW;  // redraw at next loop
-    SGUI_BUTTON.update=true;
+    // ptr->status|=SBTN_BIT_REDRAW;  // redraw at next loop
+    // SGUI_BUTTON.update=true;
   }
 }
 

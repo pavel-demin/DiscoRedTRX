@@ -22,18 +22,21 @@
 //--------------------------------------------------------------
 // Anzahl wieviele Objekte maximal erzeugt werden können
 //--------------------------------------------------------------
-#define   MAX_GRAPH_ANZ        100
+// ** WK war 100
+#define   MAX_GRAPH_ANZ        10
 
 
 //--------------------------------------------------------------
 // Maximale anzahl der Kanäle pro Graph
 //--------------------------------------------------------------
-#define   MAX_GRAPHCH_ANZ         4
+// ** WK war 4
+#define   MAX_GRAPHCH_ANZ         2
 
 //--------------------------------------------------------------
 // Maximale anzahl der Daten pro Kanal
 //--------------------------------------------------------------
-#define   MAX_GRAPHDATA_ANZ         400
+// ** WK war 400
+#define   MAX_GRAPHDATA_ANZ         480
 
 
 //--------------------------------------------------------------
@@ -122,7 +125,7 @@ void SGUI_GraphSetCHValue(SGRAPH_t* ptr, uint8_t ch, uint16_t pos, uint8_t value
 uint8_t SGUI_GraphGetCHValue(SGRAPH_t* ptr, uint8_t ch, uint16_t pos);
 void SGUI_GraphSetCHVisible(SGRAPH_t* ptr, uint8_t ch, bool visible);
 void SGUI_GraphSetCHColor(SGRAPH_t* ptr, uint8_t ch, uint16_t c);
-
+void SGUI_GraphWriteColumn(SGRAPH_t* ptr, uint8_t ch, uint16_t pos, uint8_t wert); // Balkengrafik ** WK
 
 
 

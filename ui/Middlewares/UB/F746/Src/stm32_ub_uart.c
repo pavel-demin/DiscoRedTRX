@@ -64,6 +64,9 @@ static UART_HandleTypeDef UartHandle7; // Com7
 #endif
 #if USE_UART6==1
   volatile uint8_t rx_buf6[RX_BUF_SIZE];
+  volatile uint8_t rx_buf2[RX_BUF_SIZE]; // ** WK eingefügt
+  volatile uint8_t rx_select;            // ** WK
+  volatile uint8_t rx_rdy;               // ** WK
   volatile uint32_t rx_rd_ptr6;
   volatile uint32_t rx_wr_ptr6;
 #endif
@@ -96,7 +99,8 @@ void UB_Uart_Init(void)
     HAL_UART_Init(&UartHandle1); 
     
     P_ISR_COM_Init(COM1);
-
+    rx_select=0; // ** WK
+    rx_rdy=0; // ** WK
     rx_rd_ptr1 =0;
     rx_wr_ptr1 =0;
 
@@ -357,10 +361,25 @@ void UB_Uart_SendArray(UART_NAME_t uart, uint8_t *data, uint16_t cnt)
 
 
 //--------------------------------------------------------------
+// ein Daten Array per UART empfangen *** WK ***
+// Return Wert :
+//   Pointer auf Daten Array [0...RX_BUF_SIZE]
+//--------------------------------------------------------------
+uint8_t* UB_Uart_ReceiveUART6(void)
+{
+  if(rx_rdy==0) return NULL;
+  rx_rdy=1;
+  if(rx_select==0) return (uint8_t*) &rx_buf2[0];
+  return (uint8_t*) &rx_buf6[0];
+}
+
+
+//--------------------------------------------------------------
 // ein Daten Array per UART empfangen
 // Return Wert :
 //   Anzahl der bis jetzt empfangenen Bytes [0...RX_BUF_SIZE]
 //--------------------------------------------------------------
+
 uint32_t UB_Uart_ReceiveArray(UART_NAME_t uart, uint8_t *data)
 {
   uint16_t ret_wert=0;
@@ -552,9 +571,17 @@ void USART1_IRQHandler(void)
     // wenn ein Byte im Empfangspuffer steht
     value=(uint8_t)(USART1->RDR & 0xFF);
     // byte speichern
-    rx_buf1[rx_wr_ptr1]=value;
+    if(rx_select==0) // ** WK
+      rx_buf1[rx_wr_ptr1]=value;
+    else // **
+      rx_buf2[rx_wr_ptr1]=value; // **
     rx_wr_ptr1++;
-    if(rx_wr_ptr1>=RX_BUF_SIZE) rx_wr_ptr1=0;
+    if(rx_wr_ptr1>=RX_BUF_SIZE) {
+      rx_rdy=1;
+      rx_wr_ptr1=0;
+      if(rx_select==0) rx_select=1; // **
+      else rx_select=0; // **
+    }
   }
 }
 #endif
@@ -571,9 +598,16 @@ void USART6_IRQHandler(void)
     // wenn ein Byte im Empfangspuffer steht
     value=(uint8_t)(USART6->RDR & 0xFF);
     // byte speichern
-    rx_buf6[rx_wr_ptr6]=value;
+    if(rx_select==0) // ** WK
+      rx_buf6[rx_wr_ptr6]=value;
+    else // **
+      rx_buf2[rx_wr_ptr6]=value; // **
     rx_wr_ptr6++;
-    if(rx_wr_ptr6>=RX_BUF_SIZE) rx_wr_ptr6=0;
+    if(rx_wr_ptr6>=RX_BUF_SIZE) {
+      rx_wr_ptr6=0;
+      if(rx_select==0) rx_select=1; // **
+      else rx_select=0;
+    }
   }
 }
 #endif

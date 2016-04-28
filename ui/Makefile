@@ -36,6 +36,7 @@ OBJECTS = \
   ub_sgui_slider.o \
   ub_sgui_stringlist.o \
   ub_sgui_text.o \
+  stm32_ub_tim2.o \
   ub_sgui_window.o \
   ub_font_arial_7x10.o \
   ub_font_arial_8x13.o \

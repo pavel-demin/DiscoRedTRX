@@ -223,6 +223,11 @@ void UB_LCD_DrawPixel(uint16_t color)
   aktCursorPos=LCD_CurrentFrameBuffer+(2*((aktCursorY*LCD_MAXX)+aktCursorX));
 }
 
+void WK_LCD_DrawPixel(uint16_t xpos, uint16_t ypos, uint16_t color) // ** WK
+{
+  *(volatile uint16_t*)(LCD_CurrentFrameBuffer+(2*((ypos*LCD_MAXX)+xpos)))=color;
+}
+
 
 //--------------------------------------------------------------
 // Screen-Mode einstellen

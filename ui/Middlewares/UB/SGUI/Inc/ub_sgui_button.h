@@ -32,7 +32,7 @@
 #define   SBUTTON_DEF_FRAME_SIZE  1
 #define   SBUTTON_DEF_FRAME_COL   RGB_COL_BLACK
 #define   SBUTTON_DEF_BACK_COL    SGUI_WINCOL
-#define   SBUTTON_DEF_FONT        &Arial_13x19
+#define   SBUTTON_DEF_FONT        &Arial_11x18
 
 
 //--------------------------------------------------------------

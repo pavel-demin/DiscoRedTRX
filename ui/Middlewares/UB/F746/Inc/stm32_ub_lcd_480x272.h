@@ -136,8 +136,7 @@ void UB_LCD_Rotate_180(void);
 void UB_LCD_Copy_Layer1_to_Layer2(void);
 void UB_LCD_Copy_Layer2_to_Layer1(void);
 void UB_LCD_Refresh(void);
-
-
+void WK_LCD_DrawPixel(uint16_t xpos, uint16_t ypos, uint16_t color); // ** WK
 
 //--------------------------------------------------------------
 #endif // __STM32F7_UB_LCD_480x272_H

@@ -321,43 +321,35 @@ void Brightness(void){
 void MicVol(void){
   MicVolumSet=SGUI_SliderGetValue(mic);// ((Send microphone volume control to Red Pitaya))
   UB_Uart_SendByte(COM6,4);
-  MicVolChar[0]=(char)('0' + MicVolumSet);
-  UB_Uart_SendByte(COM6,0);
-  UB_Uart_SendByte(COM6,0);
-  UB_Uart_SendByte(COM6,0);
   UB_Uart_SendByte(COM6,MicVolumSet);
+  UB_Uart_SendByte(COM6,0);
+  UB_Uart_SendByte(COM6,0);
+  UB_Uart_SendByte(COM6,0);
   UB_Uart_SendByte(COM6,0); // instead of CRC8
-  //UB_Uart_SendByte(COM6,0x0A);//     LF
 }
 
 void Volume(void){
   VolumSet=SGUI_SliderGetValue(volume);// ((Send speaker volume control to Red Pitaya))
   UB_Uart_SendByte(COM6,3);
-  VolChar[0]=(char)('0' + VolumSet);
-  UB_Uart_SendByte(COM6,0);
-  UB_Uart_SendByte(COM6,0);
-  UB_Uart_SendByte(COM6,0);
   UB_Uart_SendByte(COM6,VolumSet);
+  UB_Uart_SendByte(COM6,0);
+  UB_Uart_SendByte(COM6,0);
+  UB_Uart_SendByte(COM6,0);
   UB_Uart_SendByte(COM6,0); // instead of CRC8
-  //UB_Uart_SendByte(COM6,0x0A);//     LF
 }
 
 void ModeSelectRdy(uint16_t zeile){
   uint8_t nr;// Mode Nr.
-  char txt[3];
-  UB_Uart_SendByte(COM6,6);// "Mode Nr"
-  UB_Uart_SendByte(COM6,0);// Send Mode control to Red Pitaya
-  UB_Uart_SendByte(COM6,0);
-  UB_Uart_SendByte(COM6,0);
-
-
   ModeNr = zeile;
   ModeTxt=SGUI_ListboxGetItem(lb1,zeile);
   SGUI_ButtonSetText(btn11,ModeTxt);
   nr=(uint8_t)SGUI_ListboxGetAktivItemNr(lb1);
+  UB_Uart_SendByte(COM6,6);// Send Mode control to Red Pitaya
   UB_Uart_SendByte(COM6,nr);
+  UB_Uart_SendByte(COM6,0);
+  UB_Uart_SendByte(COM6,0);
+  UB_Uart_SendByte(COM6,0);
   UB_Uart_SendByte(COM6,0); // instead of CRC8
-  txt[1]=nr+48;//                + "0"
 
   if(ModeNr<=1){
     BWNr=BWNrCW;
@@ -377,11 +369,11 @@ void ModeSelectRdy(uint16_t zeile){
     BWTxt=SGUI_ListboxGetItem(lb22,BWNrAM);
   }
   SGUI_ButtonSetText(btn12,BWTxt);// aktuelle Bandbreite anzeigen
-  UB_Uart_SendByte(COM6,5);    // Send filter bandwidth control to Red Pitaya
-  UB_Uart_SendByte(COM6,0);
-  UB_Uart_SendByte(COM6,0);
-  UB_Uart_SendByte(COM6,0);
+  UB_Uart_SendByte(COM6,5); // Send filter bandwidth control to Red Pitaya
   UB_Uart_SendByte(COM6,9-BWNr);//'9' ... '0'
+  UB_Uart_SendByte(COM6,0);
+  UB_Uart_SendByte(COM6,0);
+  UB_Uart_SendByte(COM6,0);
   UB_Uart_SendByte(COM6,0);//    instead of CRC8
 
 }
@@ -433,11 +425,11 @@ void BWSelectRdy(uint16_t zeile){
     BWNr=(uint8_t)SGUI_ListboxGetAktivItemNr(lb22);
   }
   SGUI_ButtonSetText(btn12,BWTxt);// aktuelle Bandbreite anzeigen
-  UB_Uart_SendByte(COM6,5);    // Send filter bandwidth control to Red Pitaya
-  UB_Uart_SendByte(COM6,0);
-  UB_Uart_SendByte(COM6,0);
-  UB_Uart_SendByte(COM6,0);
+  UB_Uart_SendByte(COM6,5); // Send filter bandwidth control to Red Pitaya
   UB_Uart_SendByte(COM6,9-BWNr);//'9' ... '0'
+  UB_Uart_SendByte(COM6,0);
+  UB_Uart_SendByte(COM6,0);
+  UB_Uart_SendByte(COM6,0);
   UB_Uart_SendByte(COM6,0);//    instead of CRC8
 }
 
@@ -466,10 +458,7 @@ void AGCSelectRdy(uint16_t zeile){// for future extensions
 }
 
 void PreampRdy(){// for future improvements
-  UB_Uart_SendByte(COM6,11);    // Send preamp/attenuator control to Red Pitaya
-  UB_Uart_SendByte(COM6,0);
-  UB_Uart_SendByte(COM6,0);
-  UB_Uart_SendByte(COM6,0);
+  UB_Uart_SendByte(COM6,11);// Send preamp/attenuator control to Red Pitaya
   if(SGUI_RadioButtonIsAktiv(rb1)){
     UB_Uart_SendByte(COM6,0);// Send preamp off control to Red Pitaya
   }
@@ -479,6 +468,9 @@ void PreampRdy(){// for future improvements
   else {
     UB_Uart_SendByte(COM6,2);// Send attenuator on control to Red Pitaya
   }
+  UB_Uart_SendByte(COM6,0);
+  UB_Uart_SendByte(COM6,0);
+  UB_Uart_SendByte(COM6,0);
   UB_Uart_SendByte(COM6,0);//    instead of CRC8
 }
 
@@ -661,16 +653,16 @@ void Split(bool aktiv){//toggle split flag
 void Tune(bool aktiv){// +++++ Tune command to Red Pitaya +++++
   if(aktiv==true){
     UB_Uart_SendByte(COM6,7);// Set PTT Bit
-    UB_Uart_SendByte(COM6,0);
-    UB_Uart_SendByte(COM6,0);
-    UB_Uart_SendByte(COM6,0);
     UB_Uart_SendByte(COM6,1);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
     UB_Uart_SendByte(COM6,0);//    instead of CRC8
     UB_Uart_SendByte(COM6,8);// Set Transmitter on
-    UB_Uart_SendByte(COM6,0);
-    UB_Uart_SendByte(COM6,0);
-    UB_Uart_SendByte(COM6,0);
     UB_Uart_SendByte(COM6,1);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
     UB_Uart_SendByte(COM6,0);//    instead of CRC8
   }
   else{
@@ -700,17 +692,17 @@ void PTT(bool aktiv){// +++++ PTT to Red Pitaya +++++
       UB_Uart_SendByte(COM6,0);//    instead of CRC8
     }
     UB_Uart_SendByte(COM6,7);// Set PTT Bit
-    UB_Uart_SendByte(COM6,0);
-    UB_Uart_SendByte(COM6,0);
-    UB_Uart_SendByte(COM6,0);
     UB_Uart_SendByte(COM6,1);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
     UB_Uart_SendByte(COM6,0);//    instead of CRC8
     if(ModeNr>1){//non CW- modes
       UB_Uart_SendByte(COM6,8);// Set Transmitter on
-      UB_Uart_SendByte(COM6,0);
-      UB_Uart_SendByte(COM6,0);
-      UB_Uart_SendByte(COM6,0);
       UB_Uart_SendByte(COM6,1);
+      UB_Uart_SendByte(COM6,0);
+      UB_Uart_SendByte(COM6,0);
+      UB_Uart_SendByte(COM6,0);
       UB_Uart_SendByte(COM6,0);//    instead of CRC8
     }
 
@@ -743,10 +735,10 @@ void Mute(bool aktiv){// +++++ PTT to Red Pitaya +++++
   }
   else{
     UB_Uart_SendByte(COM6,3);// Set Volume to old value
-    UB_Uart_SendByte(COM6,0);
-    UB_Uart_SendByte(COM6,0);
-    UB_Uart_SendByte(COM6,0);
     UB_Uart_SendByte(COM6,VolumSet);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
     UB_Uart_SendByte(COM6,0);//    instead of CRC8
   }
 
@@ -1656,10 +1648,10 @@ void create_ChildWindow_15(void) {
 void MorseKey(bool aktiv){
   if(aktiv==true){
     UB_Uart_SendByte(COM6,8);// Set Transmitter on
-    UB_Uart_SendByte(COM6,0);
-    UB_Uart_SendByte(COM6,0);
-    UB_Uart_SendByte(COM6,0);
     UB_Uart_SendByte(COM6,1);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
     UB_Uart_SendByte(COM6,0);//    instead of CRC8
   }
   else{

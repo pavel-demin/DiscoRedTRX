@@ -2,8 +2,12 @@
 
 import os
 import sys
+import time
+import struct
 import serial
 import alsaaudio
+
+import numpy as np
 
 from gnuradio import gr
 from trx import trx
@@ -26,38 +30,39 @@ tb = trx()
 tb.start()
 ser = serial.Serial('/dev/ttyPS1', 115200)
 while 1:
-    line = ser.readline()
-    code = line[0]
-    if code == '1' or code == '2':
-        value = line[1:9]
-    else:
-        value = line[1]
-    if code == '1':
-        tb.set_rx_freq(int(value))
-    elif code == '2':
-        tb.set_tx_freq(int(value))
-    elif code == 'P':
-        playback.setvolume(int(value) * 10)
-    elif code == 'R':
-        recording.setvolume(int(value) * 10)
-    elif code == 'M':
-        mode = int(value)
-        if mode == 0:
-            tb.set_tx_corr(-600)
-        elif mode == 1:
-            tb.set_tx_corr(600)
-        else:
-            tb.set_tx_corr(0)
-        tb.stop()
-        tb.wait()
-        tb.set_rx_mode(mode)
-        tb.set_tx_mode(mode)
-        tb.start()
-    elif code == 'F':
-        tb.set_cwl_cutoff(cutoff[0][int(value)])
-        tb.set_cwu_cutoff(cutoff[1][int(value)])
-        tb.set_lsb_cutoff(cutoff[2][int(value)])
-        tb.set_usb_cutoff(cutoff[3][int(value)])
-        tb.set_am_cutoff(cutoff[4][int(value)])
-    elif code == 'T':
-        tb.set_ptt(int(value))
+    time.sleep(0.05)
+    # update RX meter
+    data = int(np.minimum(1400.0, -100.0 * np.log10(tb.rx_meter.level())))
+    ser.write(struct.pack('<BIB', 1, data, 0))
+    while ser.inWaiting() >= 6:
+        buffer = ser.read(6)
+        code, data, crc8 = struct.unpack('<BIB', buffer[0:6])
+        if code == 1:
+            tb.set_rx_freq(data)
+        elif code == 2:
+            tb.set_tx_freq(data)
+        elif code == 3:
+            playback.setvolume(data * 10)
+        elif code == 4:
+            recording.setvolume(data * 10)
+        elif code == 5:
+            tb.set_cwl_cutoff(cutoff[0][data])
+            tb.set_cwu_cutoff(cutoff[1][data])
+            tb.set_lsb_cutoff(cutoff[2][data])
+            tb.set_usb_cutoff(cutoff[3][data])
+            tb.set_am_cutoff(cutoff[4][data])
+        elif code == 6:
+            mode = data
+            if mode == 0:
+                tb.set_tx_corr(-600)
+            elif mode == 1:
+                tb.set_tx_corr(600)
+            else:
+                tb.set_tx_corr(0)
+            tb.stop()
+            tb.wait()
+            tb.set_rx_mode(mode)
+            tb.set_tx_mode(mode)
+            tb.start()
+        elif code == 7:
+            tb.set_ptt(data)

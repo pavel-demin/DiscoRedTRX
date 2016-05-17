@@ -29,7 +29,8 @@ recording.setvolume(50)
 tb = trx()
 tb.start()
 ser = serial.Serial('/dev/ttyPS1', 115200)
-while 1:
+running = True
+while running:
     time.sleep(0.05)
     # update RX meter
     data = int(np.minimum(1400.0, -100.0 * np.log10(tb.rx_meter.level())))
@@ -66,3 +67,7 @@ while 1:
             tb.start()
         elif code == 7:
             tb.set_ptt(data)
+        elif code == 9:
+            running = False
+tb.stop()
+tb.wait()

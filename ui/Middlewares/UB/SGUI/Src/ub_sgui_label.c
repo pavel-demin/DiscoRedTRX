@@ -188,11 +188,11 @@ void SGUI_LabelSetText(SLABEL_t* ptr, char* txt)
     ptr->status|=SLABEL_BIT_REDRAW;  // redraw at next loop
     SGUI_LABEL.update=true;    
   }
-  if(txt!=ptr->txt_ptr) {
+ // if(txt!=ptr->txt_ptr) { // ** WK **
     ptr->txt_ptr=txt;
     ptr->status|=SLABEL_BIT_REDRAW;  // redraw at next loop
     SGUI_LABEL.update=true;
-  }
+ // }
 }
 
 //--------------------------------------------------------------

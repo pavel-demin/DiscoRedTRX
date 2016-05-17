@@ -116,7 +116,7 @@ typedef enum {
 void UB_Uart_Init(void);
 void UB_Uart_SendByte(UART_NAME_t uart, uint8_t wert);
 void UB_Uart_SendString(UART_NAME_t uart, char *ptr, UART_LASTBYTE_t end_cmd);
-UART_RXSTATUS_t UB_Uart_ReceiveString(UART_NAME_t uart, char *ptr);
+uint32_t UB_Uart_ReceiveString(UART_NAME_t uart, char *ptr, uint16_t MaxAnz);
 void UB_Uart_SendArray(UART_NAME_t uart, uint8_t *data, uint16_t cnt);
 uint32_t UB_Uart_ReceiveArray(UART_NAME_t uart, uint8_t *data);
 uint8_t *UB_Uart_ReceiveUART6(void); // ** WK

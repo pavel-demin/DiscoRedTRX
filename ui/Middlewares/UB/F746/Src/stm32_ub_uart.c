@@ -64,9 +64,7 @@ static UART_HandleTypeDef UartHandle7; // Com7
 #endif
 #if USE_UART6==1
   volatile uint8_t rx_buf6[RX_BUF_SIZE];
-  volatile uint8_t rx_buf2[RX_BUF_SIZE]; // ** WK eingefügt
-  volatile uint8_t rx_select;            // ** WK
-  volatile uint8_t rx_rdy;               // ** WK
+  volatile uint8_t rx_rdy; // ** WK
   volatile uint32_t rx_rd_ptr6;
   volatile uint32_t rx_wr_ptr6;
 #endif
@@ -99,8 +97,7 @@ void UB_Uart_Init(void)
     HAL_UART_Init(&UartHandle1); 
     
     P_ISR_COM_Init(COM1);
-    rx_select=0; // ** WK
-    rx_rdy=0; // ** WK
+
     rx_rd_ptr1 =0;
     rx_wr_ptr1 =0;
 
@@ -121,7 +118,7 @@ void UB_Uart_Init(void)
     HAL_UART_Init(&UartHandle6);
 
     P_ISR_COM_Init(COM6);
- 
+    rx_rdy=0; // ** WK
     rx_rd_ptr6 =0;
     rx_wr_ptr6 =0;
   #endif
@@ -221,13 +218,13 @@ void UB_Uart_SendString(UART_NAME_t uart, char *ptr, UART_LASTBYTE_t end_cmd)
 // Endekennung vom String muss "RX_END_CHR"=0x0D sein !!
 //
 // Return Wert :
-//  -> wenn nichts empfangen = RX_EMPTY
-//  -> wenn String empfangen = RX_READY -> String steht in *ptr
+//  -> wenn nichts empfangen = 0
+//  -> wenn String empfangen = Anzahl Bytes -> String steht in *ptr
 //--------------------------------------------------------------
-UART_RXSTATUS_t UB_Uart_ReceiveString(UART_NAME_t uart, char *ptr)
+uint32_t UB_Uart_ReceiveString(UART_NAME_t uart, char *ptr, uint16_t MaxAnz)
 {
-  UART_RXSTATUS_t ret_wert=RX_EMPTY; 
-  uint32_t akt_pos,anz,n,m;
+
+  uint32_t anz=0,n,m;
   uint8_t wert;
 
   #if USE_UART1==1
@@ -243,7 +240,6 @@ UART_RXSTATUS_t UB_Uart_ReceiveString(UART_NAME_t uart, char *ptr)
 
       akt_pos=rx_rd_ptr1;
       // alle daten bis endekennung auslesen
-      m=0;
       for(n=0;n<anz;n++) {
         wert=rx_buf1[rx_rd_ptr1];
         rx_rd_ptr1++;
@@ -267,6 +263,14 @@ UART_RXSTATUS_t UB_Uart_ReceiveString(UART_NAME_t uart, char *ptr)
   #endif
   #if USE_UART6==1
     if(uart==COM6) {
+      if(rx_wr_ptr6==rx_rd_ptr6) return 0;
+
+      while((rx_buf6[rx_rd_ptr6]!=1)&&(rx_buf6[rx_rd_ptr6]!=2)) { // Anfang suchen
+        rx_rd_ptr6++;
+        if(rx_wr_ptr6==rx_rd_ptr6) return 0;
+        if(rx_rd_ptr6>RX_BUF_SIZE-1) rx_rd_ptr6=0;
+        if(rx_wr_ptr6==rx_rd_ptr6) return 0;
+      }
       // Anzahl der Daten im Puffer ermitteln
       if(rx_wr_ptr6>=rx_rd_ptr6) {
         anz=rx_wr_ptr6-rx_rd_ptr6;
@@ -274,30 +278,18 @@ UART_RXSTATUS_t UB_Uart_ReceiveString(UART_NAME_t uart, char *ptr)
       else {
         anz=(rx_wr_ptr6+RX_BUF_SIZE)-rx_rd_ptr6;
       }
-      if(anz==0) return RX_EMPTY;
-
-      akt_pos=rx_rd_ptr6;
-      // alle daten bis endekennung auslesen
+      if(anz==0) return 0;
+      if(anz>MaxAnz) anz=MaxAnz; // length limit
       m=0;
       for(n=0;n<anz;n++) {
         wert=rx_buf6[rx_rd_ptr6];
         rx_rd_ptr6++;
         if(rx_rd_ptr6>=RX_BUF_SIZE) rx_rd_ptr6=0;
-        // nur Ascii-Zeichen uebergeben
-        if((wert>=RX_FIRST_CHR) && (wert<=RX_LAST_CHR)) {
-          ptr[m]=wert;
-          m++;
-        }
-        else if(wert==RX_END_CHR) {
-          // endekennung gefunden
-          ptr[m]=0x00; // String Endekennung hinzufuegen
-          return RX_READY;
-        }
+        ptr[m]=wert;
+        m++;
       }
-      // falls keine Endekennung dabei war,
-      // pointer wieder zuruecksetzen
-      rx_rd_ptr6=akt_pos;
-      return RX_EMPTY;
+
+      return anz;
     }
   #endif
   #if USE_UART7==1
@@ -336,8 +328,9 @@ UART_RXSTATUS_t UB_Uart_ReceiveString(UART_NAME_t uart, char *ptr)
     }
   #endif
 
-  return(ret_wert);
+  return 0;
 }
+
 
 //--------------------------------------------------------------
 // ein Daten Array per UART senden
@@ -361,7 +354,7 @@ void UB_Uart_SendArray(UART_NAME_t uart, uint8_t *data, uint16_t cnt)
 
 
 //--------------------------------------------------------------
-// ein Daten Array per UART empfangen *** WK ***
+// ein Daten Array per UART empfangen     *** WK ***
 // Return Wert :
 //   Pointer auf Daten Array [0...RX_BUF_SIZE]
 //--------------------------------------------------------------
@@ -369,9 +362,9 @@ uint8_t* UB_Uart_ReceiveUART6(void)
 {
   if(rx_rdy==0) return NULL;
   rx_rdy=1;
-  if(rx_select==0) return (uint8_t*) &rx_buf2[0];
   return (uint8_t*) &rx_buf6[0];
 }
+
 
 
 //--------------------------------------------------------------
@@ -382,7 +375,6 @@ uint8_t* UB_Uart_ReceiveUART6(void)
 
 uint32_t UB_Uart_ReceiveArray(UART_NAME_t uart, uint8_t *data)
 {
-  uint16_t ret_wert=0;
   uint32_t anz,n;
   uint8_t wert;
 
@@ -450,7 +442,7 @@ uint32_t UB_Uart_ReceiveArray(UART_NAME_t uart, uint8_t *data)
     }
   #endif
 
-  return(ret_wert);
+  return 0;
 }
 
 
@@ -461,7 +453,7 @@ uint32_t UB_Uart_ReceiveArray(UART_NAME_t uart, uint8_t *data)
 static void P_BSP_COM_Init(UART_NAME_t uart)
 {
   GPIO_InitTypeDef gpio_init_structure;
-
+#if USE_UART1==1
   if(uart==COM1) {
     // GPIO Clock Enable
     UB_System_ClockEnable(COM1_TX_PORT);
@@ -484,6 +476,8 @@ static void P_BSP_COM_Init(UART_NAME_t uart)
     gpio_init_structure.Alternate = GPIO_AF7_USART1;
     HAL_GPIO_Init(COM1_RX_PORT, &gpio_init_structure);
   }
+#endif
+#if USE_UART6==1
   if(uart==COM6) {
     // GPIO Clock Enable
     UB_System_ClockEnable(COM6_TX_PORT);
@@ -506,6 +500,8 @@ static void P_BSP_COM_Init(UART_NAME_t uart)
     gpio_init_structure.Alternate = GPIO_AF8_USART6;
     HAL_GPIO_Init(COM6_RX_PORT, &gpio_init_structure);
   }
+#endif
+#if USE_UART7==1
   if(uart==COM7) {
     // GPIO Clock Enable
     UB_System_ClockEnable(COM7_TX_PORT);
@@ -528,6 +524,7 @@ static void P_BSP_COM_Init(UART_NAME_t uart)
     gpio_init_structure.Alternate = GPIO_AF8_UART7;
     HAL_GPIO_Init(COM7_RX_PORT, &gpio_init_structure);
   }
+#endif
 }
 
 //--------------------------------------------------------------
@@ -579,7 +576,7 @@ void USART1_IRQHandler(void)
     if(rx_wr_ptr1>=RX_BUF_SIZE) {
       rx_rdy=1;
       rx_wr_ptr1=0;
-      if(rx_select==0) rx_select=1; // **
+      if (rx_select==0) rx_select=1; // **
       else rx_select=0; // **
     }
   }
@@ -598,15 +595,10 @@ void USART6_IRQHandler(void)
     // wenn ein Byte im Empfangspuffer steht
     value=(uint8_t)(USART6->RDR & 0xFF);
     // byte speichern
-    if(rx_select==0) // ** WK
-      rx_buf6[rx_wr_ptr6]=value;
-    else // **
-      rx_buf2[rx_wr_ptr6]=value; // **
+    rx_buf6[rx_wr_ptr6]=value;
     rx_wr_ptr6++;
-    if(rx_wr_ptr6>=RX_BUF_SIZE) {
+    if(rx_wr_ptr6>=RX_BUF_SIZE) {// ring buffer
       rx_wr_ptr6=0;
-      if(rx_select==0) rx_select=1; // **
-      else rx_select=0;
     }
   }
 }

@@ -16,12 +16,10 @@
 // TX- Pin  : PC6 ==> CN4 D1
 //--------------------------------------------------------------
 
-
+#include "main.h"
 #include "stm32_ub_system.h"
 #include "stm32_ub_sgui.h"
 #include "stm32_ub_uart.h"
-
-#define FFTHeight 90
 
 void create_MainWindow_01(void);
 void create_ChildWindow_11(void);// Mode selection
@@ -43,6 +41,8 @@ SRBTN_t *rb1,*rb2,*rb3,*rb161,*rb162,*rb163;
 SSLIDER_t *bright, *mic;
 SWINDOW_t *ptr11,*ptr12,*ptr12,*ptr13,*ptr14,*ptr15,*ptr16,*ptr17,*ptr18;
 
+SBUTTON_t* actBtn;
+int32_t actShift;
 // Globale Steuervariablen
 uint8_t ModeNr=2;// 0 = CWL, 1=CWU, 2=LSB, 3=USB, 4=AM, 5=FM, 6=Digi
 uint8_t BWNr;
@@ -51,16 +51,20 @@ uint8_t BWNrCW=5;
 uint8_t BWNrAM=5;
 uint8_t split=0;// 0 RXfrequ =TXfrequ.
 uint8_t AGCmode;
+
+char RecDataChar[64];
+
 union {
-uint32_t frequencyA;
-char frequencyAChar[4];
+  uint32_t frequencyA;
+  char frequencyAChar[4];
 } unionA;
 
 union {
-uint32_t frequencyB;
-char frequencyBChar[4];
+  uint32_t frequencyB;
+  char frequencyBChar[4];
 } unionB;
 
+char bFreqInput=0;
 uint32_t helpFreq;
 char FrequCharA[13]="A 03.663.000";
 char FrequCharB[13]="B 07.200.000";
@@ -95,6 +99,7 @@ char new=1;
 char *ModeTxt, *BWTxt, *AGCtxt;
 char f1[7];
 
+int16_t timer1=0;
 uint8_t StopCount=9;// Control for Backlight Dim (1..18)
 uint8_t  count=0;
 uint8_t VolumSet=5;// Control for volume (0 .. 9)
@@ -107,13 +112,13 @@ uint8_t Out_Gain =5;
 char Mic_txt[9]="00000000";
 
 SGAUGE_t *SValGauge;
-uint16_t S_Value = 500;
-uint16_t S_max = 100;
-uint8_t  max;
+int16_t S_max = 0;
+int16_t maxquer = 10;
+int8_t cnt1=0;
+int8_t  maxcnt;
 char  dBm_text[8]="- 53dBm";
 char S_Text[6]="S9+40";
-uint16_t count20000=0;// for 100 ms
-uint16_t count200000=0;// for 1 s
+int32_t count500=0;// for 100 ms
 SLABEL_t *label1, *label2;// S- Meter Texte
 
 //BandWidth values from Pavel Demin:
@@ -136,7 +141,7 @@ uint32_t MakeFreq(char* freqText){//"A 07.200.000" or "B 07.200.000"
 
 void MakeFrString(char* target, uint32_t frq, uint8_t length){// result in char[] f1
   char i;
-uint32_t freq;
+  uint32_t freq;
 
   freq=frq/1000;
   target[length]=0;
@@ -179,8 +184,8 @@ void DrawScale(void){
 
 
 void ShowFFT(void){
-uint16_t i;
-uint8_t calc;
+  uint16_t i;
+  uint8_t calc;
   DrawScale();
   for(i=0;i<480;i++){
     calc=(uint8_t)((pointer[i+2] * FFTHeight) / 256);
@@ -189,62 +194,69 @@ uint8_t calc;
 }
 
 void ShowSignalStrength(void){
-uint8_t i, SNr;
-uint16_t S, dBmPlus;
-int16_t  S_Wert;
+  int8_t i, SNr;
+  int16_t S, dBmPlus;
+  int16_t  S_Wert, S_akt;
 
-  for(i=1;i<4;i++){      //  0    => 0 dBm
-    if(pointer[i]==0x0A) {//  1000 => -100 dBm
-      pointer[i]=0;
-      break;
+  union {
+    uint32_t S_Value;
+    char BChar[4];
+  } unionD;
+
+  strncpy(&unionD.BChar[0],&RecDataChar[1],4);
+
+  S_akt=unionD.S_Value;//  quickly up
+
+  S_akt=1270-S_akt;
+
+  if(S_akt<0) S_akt=0-S_akt;
+  if((S_max<S_akt)&&(S_akt<500)){
+    S_max=S_akt;//    quickly up
+    maxcnt=0;
+  }
+  else{
+    //maxcnt++;
+    //if(maxcnt>=2){
+    //  maxcnt=0;
+      S_max-=30;//    slow down
+    //}
+  }
+  maxquer=(S_max+4*maxquer)/5;//         weighted median
+  SGUI_GaugeSetValue(SValGauge,maxquer/5);//  immediate reaction
+
+  if(++cnt1>=10){//               update im 0.5 Sekundentakt
+    cnt1=0;
+    S_Wert=S=127-(maxquer*10)/37;
+    S+=40;
+    for(i=3;i>0;i--){
+      dBm_text[i]=(S%10)+48;//"ASCII 0"
+      S=S/10;
     }
-  }
-  S_Value=atoi(pointer[1]);// attention: S-Value is negative!!
+    if(dBm_text[1]=='0') dBm_text[1]=' ';
+    SGUI_LabelSetText(label2,dBm_text);// "-  53dBm"   update String
 
-  if(S_max>S_Value) {
-    S_max=S_Value;//  quickly up
-    max=0;
-  }
-  else max--;
-  if(max>9){
-    max=0;
-    S_max+=5;//       slow down    Test- value 5 ***
+    S_Text[3]=' ';
+    S_Text[4]=' ';
+    S_Text[2]=' ';
 
-  }
-  if(count20000>20000){// timer 100 millisec
-    count20000=0;
-    S_Wert=1270-S_max;
-    if(S_Wert<0) S_Wert=0;
-    SGUI_GaugeSetValue(SValGauge,S_Wert);
-    count200000++;
-    if(count200000>10){// timer 1 sec
-      count200000=0;
-      S=S_max/10;
-      for(i=3;i>0;i--){
-          dBm_text[i]=(S%10)+48;//"ASCII 0"
-          S=S/10;
-      }
-      if(dBm_text[1]=='0')dBm_text[1]=' ';
-      SGUI_LabelSetText(label2,dBm_text);// "-  53dBm"   update String
-      SNr=9;
-      S_Text[3]=' ';
-      S_Text[4]=' ';
-      S_Text[2]=' ';
-      while(S_Wert<=730) {
+    S=S_Wert;
+    SNr=9;
+    if(S<200){
+      while((S>0)&&(SNr>=0)) {
         SNr--;
-        S_Wert+=6;
+        S-=20;
       }
-      if(SNr==9){
-        dBmPlus=(730-S_Wert)/10;
-        S_Text[4]=(dBmPlus%10)+48;
-        S_Text[3]=dBmPlus/10+48;
-        S_Text[2]='+';
-      }
-      S_Text[1]=SNr+48;//
-      SGUI_LabelSetText(label1,S_Text);// "S9+20"
     }
+    else
+    {
+      dBmPlus=((S_Wert-200)*10)/37;
+      S_Text[4]=(dBmPlus%10)+48;
+      S_Text[3]=dBmPlus/10+48;
+      S_Text[2]='+';
+    }
+    S_Text[1]=SNr+48;//
+    SGUI_LabelSetText(label1,S_Text);// "S9+20"
   }
-
 }
 
 void UB_TIMER2_ISR_CallBack(void){// von TIM2 aufgerufen (Interrupt 200 kHz)
@@ -253,6 +265,10 @@ void UB_TIMER2_ISR_CallBack(void){// von TIM2 aufgerufen (Interrupt 200 kHz)
   if(count ==20) {
     HAL_GPIO_WritePin(LCD_BL_CTRL_GPIO_PORT, LCD_BL_CTRL_PIN, 1);
     count=0;
+  }
+  if(++count500>500){
+    timer1++;
+    count500=0;
   }
 }
 
@@ -286,16 +302,46 @@ int main(void)
   while(1)
   {
     SGUI_Do(); // SGUI bearbeiten
-    pointer=UB_Uart_ReceiveUART6();
+
+    if(bFreqInput==1){
+      SGUI_ButtonSetAktiv(actBtn,true);
+      if(SGUI_ButtonIsAktiv(actBtn)){
+      if (timer1>=10){// 1 Sekunde
+        timer1=0;
+        bFreqInput=2;
+      }
+      }
+    }
+    else if(bFreqInput==2){
+      if(SGUI_ButtonIsAktiv(actBtn)){
+      if (timer1>=2){// 0,2 Sekunden
+        timer1=0;
+        FrequShift(actShift);
+        SendFreq();
+      }
+    }
+    else {
+      SGUI_ButtonSetAktiv(actBtn, false);
+      bFreqInput=0;//  Eingabe beendet
+    }
+    }
+    else{
+      SGUI_ButtonSetAktiv(actBtn, false);
+      bFreqInput=0;//  Eingabe beendet
+
+    }
+   /*  pointer=UB_Uart_ReceiveUART6();
     if(pointer != NULL)
       //pointer=(char*) &TestArray[0];
-      if(pointer != oldpointer){
+     if(pointer != oldpointer){
         oldpointer=pointer;
         if(pointer[0]== 2)
-           ShowFFT();
-        if(pointer[0]== 1)
+           ShowFFT();*/
+    if(UB_Uart_ReceiveString(COM6, &RecDataChar[0], 6)!=0){
+      if((RecDataChar[0]== 1)&&(RecDataChar[5]==0))
             ShowSignalStrength();
-      }
+    }
+
   }
 
 }
@@ -403,9 +449,9 @@ void CW_Keyer(bool aktiv) {
   if(aktiv==true){
     SGUI_WindowShow(18);//
   }
-    else{
-        SGUI_WindowShow(1); // main-window anzeigen
-      }
+  else{
+    SGUI_WindowShow(1); // main-window anzeigen
+  }
 }
 
 void BWSelectRdy(uint16_t zeile){
@@ -447,14 +493,10 @@ void AGCSelect(bool aktiv) {
 
 void AGCSelectRdy(uint16_t zeile){// for future extensions
   uint8_t nr;
-  char txt[3]="G0";
-
   AGCmode = zeile;
   AGCtxt=SGUI_ListboxGetItem(lb13,zeile);
   SGUI_ButtonSetText(btn13,AGCtxt);
   nr=(uint8_t)SGUI_ListboxGetAktivItemNr(lb13);
-  txt[1]=nr+48;//                + "0"
-  //UB_Uart_SendString(COM6,&txt[0],LF);//        Send AGC control to Red Pitaya
 }
 
 void PreampRdy(){// for future improvements
@@ -490,6 +532,7 @@ void SendFreq(){
   uint8_t i;
 
   if(split==0){ //RXfrequ = TXfrequ = FrequA
+    unionA.frequencyA=MakeFreq(FrequCharA);// make frequency A as integer
     UB_Uart_SendByte(COM6,1);// Send frequency control to Red Pitaya
     for(i=0;i<4;i++){
       UB_Uart_SendByte(COM6, unionA.frequencyAChar[i]);
@@ -501,13 +544,13 @@ void SendFreq(){
     }
     UB_Uart_SendByte(COM6,0);//    instead of CRC8
   }
-
   else{// RXfrequ=FrequA   TXfreq=FreqB
     UB_Uart_SendByte(COM6,1);// Send frequency control to Red Pitaya
     for(i=0;i<4;i++){
       UB_Uart_SendByte(COM6,unionA.frequencyAChar[i]);
     }
     UB_Uart_SendByte(COM6,0);//    instead of CRC8
+    unionB.frequencyB=MakeFreq(FrequCharB);// make frequency B as integer
     UB_Uart_SendByte(COM6,2);// Send frequency control to Red Pitaya
     for(i=0;i<4;i++){
       UB_Uart_SendByte(COM6,unionB.frequencyBChar[i]);
@@ -546,18 +589,18 @@ void SetFreqBtns0(void){
 
 void btn_Freqfkt(bool aktiv) {
   if(aktiv==false) {
-  if(FrequChar[0]=='A'){
-    SetFreq((char*)&FrequCharA[0]);// Frequenz zurückschreiben
-  }
-  else {
-    SetFreq((char*)&FrequCharB[0]);
-  }
-  SendFreq();
-  //create_MainWindow_01();
-  SGUI_WindowShow(1);
-  oldpointer=NULL;// FFT anzeigen
-  new=1;
-  ShowFFT();
+    if(FrequChar[0]=='A'){
+      SetFreq((char*)&FrequCharA[0]);// Frequenz zurückschreiben
+    }
+    else {
+      SetFreq((char*)&FrequCharB[0]);
+    }
+    SendFreq();
+    //create_MainWindow_01();
+    SGUI_WindowShow(1);
+    oldpointer=NULL;// FFT anzeigen
+    new=1;
+    ShowFFT();
   }
 }
 
@@ -745,9 +788,7 @@ void Mute(bool aktiv){// +++++ PTT to Red Pitaya +++++
 }
 //--------------------------------------------------------------
 void create_MainWindow_01(void) {
-  SLABEL_t *label;
   SBUTTON_t *btn2, *btn4, *btn5,*btn5a, *btn6,*btn7,*btn8,*btnA,*btnB;// , *btn3
-  SGAUGE_t *gauge;
 
   MAIN=SGUI_WindowCreateMain(1); // Main-Window (Nr=1)
   btn=SGUI_ButtonCreate(400,212,80,60); // button
@@ -829,25 +870,26 @@ void create_MainWindow_01(void) {
 
   volume=SGUI_SliderCreate(176,165,200,30);// Volume
   SGUI_SliderSetColor(volume,RGB_COL_GREY,0x076CE);
-  SGUI_SliderSetMinMax(volume,0,9);
+  SGUI_SliderSetMinMax(volume,0,10);
   SGUI_SliderSetStep(volume,1);
   SGUI_SliderSetValue(volume,VolumSet);
   SGUI_SliderSetHandler(volume, Volume);
 
  // SGUI_TextSetCursor(180,200);
  // SGUI_TextCreateString("Hz");
-    label=SGUI_LabelCreate(4,165,68,23); // S-Wert
-    SGUI_LabelSetStyle(label, STYLE_FLAT);
-    SGUI_LabelSetText(label,"S9+40");
+  label1=SGUI_LabelCreate(4,165,68,23); // S-Wert
+  SGUI_LabelSetStyle(label1, STYLE_FLAT);
+  SGUI_LabelSetText(label1,"S9+40");
 
-    label=SGUI_LabelCreate(74,165,98,23); // Feldstärke
-    SGUI_LabelSetStyle(label, STYLE_FLAT);
-    SGUI_LabelSetText(label,"- 53dBm");
+  label2=SGUI_LabelCreate(74,165,98,23); // Feldstärke
+  SGUI_LabelSetStyle(label2, STYLE_FLAT);
+  SGUI_LabelSetText(label2,"- 53dBm");
 
-    gauge=SGUI_GaugeCreate(4,188,168,20); // S- Meter
-    SGUI_GaugeSetStyle(gauge,STYLE_FLAT);
-    SGUI_GaugeSetColor(gauge,0x076CE,RGB_COL_GREY);
-    SGUI_GaugeSetValue(gauge,80);
+  SValGauge=SGUI_GaugeCreate(4,188,168,20); // S- Meter
+  SGUI_GaugeSetStyle(SValGauge,STYLE_FLAT);
+  SGUI_GaugeSetColor(SValGauge,0x076CE,RGB_COL_GREY);
+  SGUI_GaugeSetMinMax(SValGauge,0,100);
+  SGUI_GaugeSetValue(SValGauge,80);
 
   btn9=SGUI_ButtonCreate(4,214,168,28); // Frequency A
   SGUI_ButtonSetFont(btn9, &Arial_13x19);
@@ -994,24 +1036,24 @@ AM: 5.0k, 6.0k, 7.0k, 8.0k, 9.0k, 10k, 12k, 16k, 18k, 20k*/
 //--------------------------------------------------------------
 void create_ChildWindow_13(void) {
 
-ptr13=SGUI_WindowCreateChild(13,0,30,240,200); // Child-Window (Nr=13)
-SGUI_WindowSetColor(ptr13,RGB_COL_BLACK,0x076CE);
-SGUI_TextSetCursor(4,10);
-SGUI_TextCreateString("Enter AGC");    // Beschriftung
+  ptr13=SGUI_WindowCreateChild(13,0,30,240,200); // Child-Window (Nr=13)
+  SGUI_WindowSetColor(ptr13,RGB_COL_BLACK,0x076CE);
+  SGUI_TextSetCursor(4,10);
+  SGUI_TextCreateString("Enter AGC");    // Beschriftung
 
-lb13=SGUI_ListboxCreate(4,40,160,150); // AGC
-SGUI_ListboxSetStyle(lb13, STYLE_FLAT);
-SGUI_ListboxSetFont(lb13,&Arial_16x25);
-SGUI_ListboxSetSliderVisible(lb13,false);
-SGUI_ListboxAddItem(lb13,"Fast");
-SGUI_ListboxAddItem(lb13,"Medium");
-SGUI_ListboxAddItem(lb13,"Slow");
-SGUI_ListboxAddItem(lb13,"None");
-SGUI_ListboxSetHandler(lb13,AGCSelectRdy);
+  lb13=SGUI_ListboxCreate(4,40,160,150); // AGC
+  SGUI_ListboxSetStyle(lb13, STYLE_FLAT);
+  SGUI_ListboxSetFont(lb13,&Arial_16x25);
+  SGUI_ListboxSetSliderVisible(lb13,false);
+  SGUI_ListboxAddItem(lb13,"Fast");
+  SGUI_ListboxAddItem(lb13,"Medium");
+  SGUI_ListboxAddItem(lb13,"Slow");
+  SGUI_ListboxAddItem(lb13,"None");
+  SGUI_ListboxSetHandler(lb13,AGCSelectRdy);
 
-btn=SGUI_ButtonCreate(180,4,50,50); // ok-button
-SGUI_ButtonSetText(btn,"OK");
-SGUI_ButtonSetHandler(btn,btn_fkt);
+  btn=SGUI_ButtonCreate(180,4,50,50); // ok-button
+  SGUI_ButtonSetText(btn,"OK");
+  SGUI_ButtonSetHandler(btn,btn_fkt);
 }
 
 // Helper Frequenzeingabe
@@ -1025,9 +1067,8 @@ void SetColorBtn(SBUTTON_t* ptr, char n){
   oldpos=n;
 }
 
-void FrequShift(uint32_t freqShift){
+void FrequShift(int32_t freqShift){
 char Freq[9]="000000000";
-
   if(FrequChar[0]=='A') {
     unionA.frequencyA=MakeFreq(FrequChar);// make frequency as integer
     helpFreq=unionA.frequencyA+freqShift;
@@ -1066,7 +1107,14 @@ char Freq[9]="000000000";
     }
   }
 }
-
+void ComputeBtn(int32_t freqShift, SBUTTON_t* ptr, char n, SBUTTON_t* qbtn){
+  FrequShift(freqShift);
+  SetColorBtn(ptr,n);
+  actBtn=qbtn;
+  actShift=freqShift;
+  bFreqInput=1;
+  timer1=0;
+}
 
 
 void fktup1(bool aktiv){// Einer
@@ -1076,8 +1124,7 @@ void fktup1(bool aktiv){// Einer
       z1[0]++;
       SGUI_ButtonSetText(bt1,z1);
     }
-    FrequShift(1);
-    SetColorBtn(bt1,1);
+    ComputeBtn(1,bt1,1,up1);
   }
 }
 
@@ -1088,8 +1135,7 @@ void fktdn1(bool aktiv){
       z1[0]--;
       SGUI_ButtonSetText(bt1,z1);
     }
-    FrequShift(-1);
-    SetColorBtn(bt1,1);
+    ComputeBtn(-1,bt1,1,dn1);
   }
 }
 void fktbt1(bool aktiv){
@@ -1103,8 +1149,7 @@ void fktup2(bool aktiv){// Zehner
       z2[0]++;
       SGUI_ButtonSetText(bt2,z2);
     }
-    FrequShift(10);
-    SetColorBtn(bt2,2);
+    ComputeBtn(10,bt2,2,up2);
   }
 }
 void fktdn2(bool aktiv){
@@ -1114,8 +1159,7 @@ void fktdn2(bool aktiv){
       z2[0]--;
       SGUI_ButtonSetText(bt2,z2);
     }
-    FrequShift(-10);
-    SetColorBtn(bt2,2);
+    ComputeBtn(-10,bt2,2,dn2);
   }
 }
 void fktbt2(bool aktiv){
@@ -1129,8 +1173,7 @@ void fktup3(bool aktiv){// Hunderter
       z3[0]++;
       SGUI_ButtonSetText(bt3,z3);
     }
-    FrequShift(100);
-    SetColorBtn(bt3,3);
+    ComputeBtn(100,bt3,3,up3);
   }
 }
 void fktdn3(bool aktiv){
@@ -1140,8 +1183,7 @@ void fktdn3(bool aktiv){
       z3[0]--;
       SGUI_ButtonSetText(bt3,z3);
     }
-    FrequShift(-100);
-    SetColorBtn(bt3,3);
+    ComputeBtn(-100,bt3,3,dn3);
   }
 }
 void fktbt3(bool aktiv){
@@ -1154,8 +1196,7 @@ void fktup4(bool aktiv){
       z4[0]++;
       SGUI_ButtonSetText(bt4,z4);
     }
-    FrequShift(1000);
-    SetColorBtn(bt4,4);
+    ComputeBtn(1000,bt4,4,up4);
   }
 }
 void fktdn4(bool aktiv){
@@ -1165,8 +1206,7 @@ void fktdn4(bool aktiv){
       z4[0]--;
       SGUI_ButtonSetText(bt4,z4);
     }
-    FrequShift(-1000);
-    SetColorBtn(bt4,4);
+    ComputeBtn(-1000,bt4,4,dn4);
   }
 }
 void fktbt4(bool aktiv){
@@ -1181,8 +1221,7 @@ void fktup5(bool aktiv){
       z5[0]++;
       SGUI_ButtonSetText(bt5,z5);
     }
-    FrequShift(10000);
-    SetColorBtn(bt5,5);
+    ComputeBtn(10000,bt5,5,up5);
   }
 }
 void fktdn5(bool aktiv){
@@ -1192,8 +1231,7 @@ void fktdn5(bool aktiv){
       z5[0]--;
       SGUI_ButtonSetText(bt5,z5);
     }
-    FrequShift(-10000);
-    SetColorBtn(bt5,5);
+    ComputeBtn(-10000,bt5,5,dn5);
   }
 }
 void fktbt5(bool aktiv){
@@ -1207,8 +1245,7 @@ void fktup6(bool aktiv){
       z6[0]++;
       SGUI_ButtonSetText(bt6,z6);
     }
-    FrequShift(100000);
-    SetColorBtn(bt6,6);
+    ComputeBtn(100000,bt6,6,up6);
   }
 }
 void fktdn6(bool aktiv){
@@ -1217,8 +1254,7 @@ void fktdn6(bool aktiv){
       z6[0]--;
       SGUI_ButtonSetText(bt6,z6);
     }
-    FrequShift(-100000);
-    SetColorBtn(bt6,6);
+    ComputeBtn(-100000,bt6,6,dn6);
   }
 }
 void fktbt6(bool aktiv){
@@ -1232,8 +1268,7 @@ void fktup7(bool aktiv){
       z7[0]++;
       SGUI_ButtonSetText(bt7,z7);
     }
-    FrequShift(1000000);
-    SetColorBtn(bt7,7);
+    ComputeBtn(1000000,bt7,7,up7);
 
   }
 }
@@ -1243,8 +1278,7 @@ void fktdn7(bool aktiv){
       z7[0]--;
       SGUI_ButtonSetText(bt7,z7);
     }
-    FrequShift(-1000000);
-    SetColorBtn(bt7,7);
+    ComputeBtn(-1000000,bt7,7,dn7);
   }
 }
 void fktbt7(bool aktiv){
@@ -1257,8 +1291,7 @@ void fktup8(bool aktiv){
       z8[0]++;
       SGUI_ButtonSetText(bt8,z8);
     }
-    FrequShift(10000000);
-    SetColorBtn(bt8,8);
+    ComputeBtn(10000000,bt8,8,up8);
   }
 }
 void fktdn8(bool aktiv){
@@ -1267,8 +1300,7 @@ void fktdn8(bool aktiv){
       z8[0]--;
       SGUI_ButtonSetText(bt8,z8);
     }
-    FrequShift(-10000000);
-    SetColorBtn(bt8,8);
+    ComputeBtn(-10000000,bt8,8,dn8);
 
   }
 }

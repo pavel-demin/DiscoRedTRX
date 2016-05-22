@@ -1044,10 +1044,6 @@
       <value>tx_freq + tx_corr</value>
     </param>
     <param>
-      <key>chan</key>
-      <value>1</value>
-    </param>
-    <param>
       <key>comment</key>
       <value></value>
     </param>
@@ -1093,10 +1089,6 @@
     <param>
       <key>freq</key>
       <value>rx_freq + rx_corr</value>
-    </param>
-    <param>
-      <key>chan</key>
-      <value>1</value>
     </param>
     <param>
       <key>comment</key>

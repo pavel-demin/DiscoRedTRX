@@ -11,10 +11,10 @@ make -C grc
 python main.py
 
 2. Commands for WDSP version:
-apt-get install make libfftw3-dev subversion
+apt-get install make libasound2-dev libfftw3-dev subversion
 wget https://github.com/pavel-demin/DiscoRedTRX/archive/master.tar.gz
 tar -zxf master.tar.gz
 cd DiscoRedTRX-master
 source build-wdsp.sh
-gcc -O3 -march=armv7-a -mcpu=cortex-a9 -mtune=cortex-a9 -mfpu=neon -mfloat-abi=hard -ffast-math -Wall main.c -o main -Iwdsp -Lwdsp -lwdsp -lfftw3 -lm -lpthread
+gcc -O3 -march=armv7-a -mcpu=cortex-a9 -mtune=cortex-a9 -mfpu=neon -mfloat-abi=hard -ffast-math -Wall main.c -o main -Iwdsp -Lwdsp -lwdsp -lasound -lfftw3 -lm -lpthread
 arecord -fFLOAT_LE -c2 -r48000 | ./main | aplay -fFLOAT_LE -c2 -r48000

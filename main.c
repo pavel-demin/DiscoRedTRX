@@ -139,8 +139,8 @@ int main()
   mode = 3;
   shift = 0;
   filter = 4;
-  rx_freq = 7200000000;
-  tx_freq = 7200000000;
+  rx_freq = 7200000;
+  tx_freq = 7200000;
 
   *rx_phase = (uint32_t)floor((rx_freq + shift) / 125.0e6 * (1<<30) + 0.5);
   *tx_phase = (uint32_t)floor(tx_freq / 125.0e6 * (1<<30) + 0.5);

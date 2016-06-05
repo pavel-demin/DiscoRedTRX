@@ -55,11 +55,11 @@ while running:
         elif code == 6:
             mode = data
             if mode == 0:
-                tb.set_tx_corr(-600)
+                tb.set_rx_corr(600)
             elif mode == 1:
-                tb.set_tx_corr(600)
+                tb.set_rx_corr(-600)
             else:
-                tb.set_tx_corr(0)
+                tb.set_rx_corr(0)
             tb.stop()
             tb.wait()
             tb.set_rx_mode(mode)

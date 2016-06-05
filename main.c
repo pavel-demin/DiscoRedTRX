@@ -200,12 +200,14 @@ int main()
           *tx_phase = (uint32_t)floor(tx_freq / 125.0e6 * (1<<30) + 0.5);
           break;
         case 3:
+          if(data > 9) continue;
           snd_mixer_selem_get_playback_volume_range(playback, &min, &max);
           snd_mixer_selem_set_playback_volume_all(playback, data * max / 9);
           break;
         case 4:
-          snd_mixer_selem_get_playback_volume_range(recording, &min, &max);
-          snd_mixer_selem_set_playback_volume_all(recording, data * max / 9);
+          if(data > 9) continue;
+          snd_mixer_selem_get_capture_volume_range(recording, &min, &max);
+          snd_mixer_selem_set_capture_volume_all(recording, data * max / 9);
           break;
         case 5:
           if(data > 9) continue;

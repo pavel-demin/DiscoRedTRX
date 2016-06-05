@@ -1,0 +1,206 @@
+diff -rupN old/wdsp/analyzer.c wdsp/analyzer.c
+--- old/wdsp/analyzer.c
++++ wdsp/analyzer.c
+@@ -604,9 +604,17 @@ DWORD WINAPI spectra (void *pargs)
+ 		LeaveCriticalSection (&(a->EliminateSection[ss]));
+ 
+ 		EnterCriticalSection (&a->StitchSection);
++#ifdef linux
++		a->stitch_flag |= 1L << ss;
++#else
+ 		a->stitch_flag |= 1i64 << ss;
++#endif
+ 
++#ifdef linux
++		if (a->stitch_flag == ((1L << a->num_stitch) - 1))
++#else
+ 		if (a->stitch_flag == ((1i64 << a->num_stitch) - 1))
++#endif
+ 		{
+ 			a->stitch_flag = 0;
+ 			LeaveCriticalSection(&a->StitchSection);
+@@ -681,9 +689,17 @@ DWORD WINAPI Cspectra (void *pargs)
+ 		LeaveCriticalSection (&(a->EliminateSection[ss]));
+ 
+ 		EnterCriticalSection (&a->StitchSection);
++#ifdef linux
++		a->stitch_flag |= 1L << ss;
++#else
+ 		a->stitch_flag |= 1i64 << ss;
++#endif
+ 
++#ifdef linux
++		if (a->stitch_flag == ((1L << a->num_stitch) - 1))
++#else
+ 		if (a->stitch_flag == ((1i64 << a->num_stitch) - 1))
++#endif
+ 		{
+ 			a->stitch_flag = 0;
+ 			LeaveCriticalSection(&a->StitchSection);
+@@ -1044,7 +1060,11 @@ void XCreateAnalyzer(	int disp,
+ 	for (i = 0; i < a->max_stitch; i++)
+ 		for (j = 0; j < a->max_num_fft; j++)
+ 		{
++#ifdef linux
++			CreateEvent(&a->hSnapEvent[i][j],NULL, FALSE, FALSE, "snap");
++#else
+ 			a->hSnapEvent[i][j] = CreateEvent(NULL, FALSE, FALSE, TEXT("snap"));
++#endif
+ 			a->snap[i][j] = 0;
+ 		}
+ 	InitializeCriticalSectionAndSpinCount(&a->ResampleSection, 0);
+diff -rupN old/wdsp/channel.c wdsp/channel.c
+--- old/wdsp/channel.c
++++ wdsp/channel.c
+@@ -28,8 +28,13 @@ warren@wpratt.com
+ 
+ void start_thread (int channel)
+ {
++#ifdef linux
++        pthread_t handle = _beginthread(wdspmain, 0, (void *)channel);
++        SetThreadPriority(handle, THREAD_PRIORITY_HIGHEST);
++#else
+ 	HANDLE handle = (HANDLE) _beginthread(main, 0, (void *)channel);
+ 	SetThreadPriority(handle, THREAD_PRIORITY_HIGHEST);
++#endif
+ }
+ 
+ void pre_main_build (int channel)
+@@ -95,7 +100,9 @@ void OpenChannel (int channel, int in_si
+ 		InterlockedBitTestAndReset (&ch[channel].iob.pc->exec_bypass, 0);
+ 		InterlockedBitTestAndSet (&ch[channel].exchange, 0);
+ 	}
++#ifndef linux
+ 	_MM_SET_FLUSH_ZERO_MODE (_MM_FLUSH_ZERO_ON);
++#endif
+ }
+ 
+ void pre_main_destroy (int channel)
+diff -rupN old/wdsp/comm.h wdsp/comm.h
+--- old/wdsp/comm.h
++++ wdsp/comm.h
+@@ -24,9 +24,17 @@ warren@wpratt.com
+ 
+ */
+ 
++#ifdef linux
++#include <stdlib.h>
++#include <pthread.h>
++#include <semaphore.h>
++#include <string.h>
++#include "linux_port.h"
++#else
+ #include <Windows.h>
+ #include <process.h>
+ #include <intrin.h>
++#endif
+ #include <math.h>
+ #include <time.h>
+ #include "fftw3.h"
+diff -rupN old/wdsp/emnr.h wdsp/emnr.h
+--- old/wdsp/emnr.h
++++ wdsp/emnr.h
+@@ -170,4 +170,6 @@ extern setSamplerate_emnr (EMNR a, int r
+ 
+ extern setSize_emnr (EMNR a, int size);
+ 
+-#endif
+\ No newline at end of file
++extern __declspec (dllexport) void SetRXAEMNRRun (int channel, int run);
++
++#endif
+diff -rupN old/wdsp/iobuffs.c wdsp/iobuffs.c
+--- old/wdsp/iobuffs.c
++++ wdsp/iobuffs.c
+@@ -412,8 +412,13 @@ void create_iobuffs (int channel)
+ 	n = a->r2_havesamps / a->out_size;
+ 	a->r2_unqueuedsamps = a->r2_havesamps - n * a->out_size;
+ 	InitializeCriticalSectionAndSpinCount(&a->r2_ControlSection, 2500);
++#ifdef linux
++	CreateSemaphore(&a->Sem_BuffReady, 0, 0, 1000, 0);
++	CreateSemaphore(&a->Sem_OutReady, 0, n, 1000, 0);
++#else
+ 	a->Sem_BuffReady = CreateSemaphore(0, 0, 1000, 0);
+ 	a->Sem_OutReady  = CreateSemaphore(0, n, 1000, 0);
++#endif
+ 	a->bfo = ch[channel].bfo;
+ 	create_slews (a);
+ }
+@@ -446,7 +451,11 @@ void flush_iobuffs (int channel)
+ 	n = a->r2_havesamps / a->out_size;
+ 	a->r2_unqueuedsamps = a->r2_havesamps - n * a->out_size;
+ 	CloseHandle (a->Sem_OutReady);
++#ifdef linux
++	CreateSemaphore(&a->Sem_OutReady, 0, n, 1000, 0);
++#else
+ 	a->Sem_OutReady  = CreateSemaphore(0, n, 1000, 0);
++#endif
+ 	flush_slews (a);
+ }
+ 
+diff -rupN old/wdsp/main.c wdsp/main.c
+--- old/wdsp/main.c
++++ wdsp/main.c
+@@ -26,7 +26,11 @@ warren@wpratt.com
+ 
+ #include "comm.h"
+ 
++#ifdef linux
++void wdspmain (void *pargs)
++#else
+ void main (void *pargs)
++#endif
+ {
+ 	int channel = (int)pargs;
+ 	while (_InterlockedAnd (&ch[channel].run, 1))
+diff -rupN old/wdsp/main.h wdsp/main.h
+--- old/wdsp/main.h
++++ wdsp/main.h
+@@ -27,7 +27,11 @@ warren@wpratt.com
+ #ifndef _mainloop_h
+ #define _mainloop_h
+ 
++#ifdef linux
++extern void wdspmain (void *pargs);
++#else
+ extern void main (void *pargs);
++#endif
+ 
+ extern void create_main (int channel);
+ 
+Binary files old/wdsp/.svn/wc.db and wdsp/.svn/wc.db differ
+diff -rupN old/wdsp/utilities.c wdsp/utilities.c
+--- old/wdsp/utilities.c
++++ wdsp/utilities.c
+@@ -44,6 +44,8 @@ void *malloc0 (int size)
+ 
+ // Exported calls
+ 
++#ifndef linux
++
+ PORT void
+ *NewCriticalSection()
+ {	// used by VAC
+@@ -58,6 +60,7 @@ DestroyCriticalSection (LPCRITICAL_SECTI
+ 	free ((char *)cs_ptr);
+ }
+ 
++#endif
+ 
+ /********************************************************************************************************
+ *																										*
+@@ -296,12 +299,12 @@ int done = 0;
+ 
+ void WriteAudioFile(void* arg)
+ {
+-	byte* dat = (byte *)arg;
++	uint8_t* dat = (uint8_t *)arg;
+ 	FILE* file = fopen("AudioFile", "wb");
+ 
+ 	// reverse bits of each byte (possibly needed on some platforms)
+ 	// int i;
+-	// byte b;
++	// uint8_t b;
+ 	// for (i = 0; i < 4 * audiocount; i++)
+ 	// {
+ 	//	b = dat[i];

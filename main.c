@@ -40,7 +40,7 @@ int main()
   long min, max;
   snd_mixer_t *handle;
   snd_mixer_selem_id_t *sid;
-  snd_mixer_elem_t *playback, *recording;
+  snd_mixer_elem_t *playback, *capture;
   double cutoff[5][10][2] = {
     {{-613, -587}, {-625, -575}, {-650, -550}, {-725, -475}, {-800, -400}, {-850, -350}, {-900, -300}, {-975, -225}, {-1000, -200}, {-1100, -100}},
     {{587, 613}, {575, 625}, {550, 650}, {475, 725}, {400, 800}, {350, 850}, {300, 900}, {225, 975}, {200, 1000}, {100, 1100}},
@@ -65,7 +65,9 @@ int main()
   tty.c_cflag &= ~PARENB;
   tty.c_cflag &= ~CSTOPB;
   tty.c_cflag &= ~CSIZE;
+  tty.c_cflag &= ~CRTSCTS;
   tty.c_cflag |= CS8 | CLOCAL;
+  cfmakeraw(&tty);
   tcflush(uart, TCIFLUSH);
   tcsetattr(uart, TCSANOW, &tty);
 
@@ -82,7 +84,7 @@ int main()
   snd_mixer_selem_id_alloca(&sid);
   snd_mixer_selem_id_set_index(sid, 0);
   snd_mixer_selem_id_set_name(sid, "Mic");
-  recording = snd_mixer_find_selem(handle, sid);
+  capture = snd_mixer_find_selem(handle, sid);
 
   sts = mmap(NULL, sysconf(_SC_PAGESIZE), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0x40000000);
   cfg = mmap(NULL, sysconf(_SC_PAGESIZE), PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0x40001000);
@@ -187,6 +189,7 @@ int main()
       code = *(uint8_t *)(buffer + 0);
       data = *(uint32_t *)(buffer + 1);
       crc8 = *(uint8_t *)(buffer + 5);
+      fprintf(stderr, "%d %d %d\n", code, data, crc8);
       switch(code)
       {
         case 1:
@@ -206,8 +209,8 @@ int main()
           break;
         case 4:
           if(data > 9) continue;
-          snd_mixer_selem_get_capture_volume_range(recording, &min, &max);
-          snd_mixer_selem_set_capture_volume_all(recording, data * max / 9);
+          snd_mixer_selem_get_capture_volume_range(capture, &min, &max);
+          snd_mixer_selem_set_capture_volume_all(capture, data * max / 9);
           break;
         case 5:
           if(data > 9) continue;

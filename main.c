@@ -181,6 +181,10 @@ int main()
   {
     usleep(50000);
     /* update RX meter */
+    *(uint8_t *)(buffer + 0) = 1;
+    *(uint32_t *)(buffer + 1) = (uint32_t)floor(-10.0 * GetRXAMeter(0, 1) + 0.5);
+    *(uint8_t *)(buffer + 5) = 0;
+    write(uart, buffer, 6);
     while(1)
     {
       ioctl(uart, FIONREAD, &size);
@@ -189,7 +193,6 @@ int main()
       code = *(uint8_t *)(buffer + 0);
       data = *(uint32_t *)(buffer + 1);
       crc8 = *(uint8_t *)(buffer + 5);
-      fprintf(stderr, "%d %d %d\n", code, data, crc8);
       switch(code)
       {
         case 1:

@@ -181,9 +181,9 @@ int main()
   {
     usleep(50000);
     /* update RX meter */
-    *(uint8_t *)(buffer + 0) = 1;
+    *(uint8_t *)(buffer + 0) = 85;
     *(uint32_t *)(buffer + 1) = (uint32_t)floor(-10.0 * GetRXAMeter(0, 1) + 0.5);
-    *(uint8_t *)(buffer + 5) = 0;
+    *(uint8_t *)(buffer + 5) = 160;
     write(uart, buffer, 6);
     while(1)
     {

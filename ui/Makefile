@@ -11,6 +11,7 @@ OBJECTS = \
   stm32f7xx_hal_ltdc.o \
   stm32f7xx_hal_pwr.o \
   stm32f7xx_hal_pwr_ex.o \
+  stm32f7xx_hal_qspi.o \
   stm32f7xx_hal_rcc.o \
   stm32f7xx_hal_rcc_ex.o \
   stm32f7xx_hal_sdram.o \
@@ -36,7 +37,6 @@ OBJECTS = \
   ub_sgui_slider.o \
   ub_sgui_stringlist.o \
   ub_sgui_text.o \
-  stm32_ub_tim2.o \
   ub_sgui_window.o \
   ub_font_arial_7x10.o \
   ub_font_arial_8x13.o \
@@ -48,9 +48,11 @@ OBJECTS = \
   stm32_ub_graphic2d.o \
   stm32_ub_i2c3.o \
   stm32_ub_lcd_480x272.o \
+  stm32_ub_qflash.o \
   stm32_ub_sdram.o \
   stm32_ub_sgui.o \
   stm32_ub_system.o \
+  stm32_ub_tim2.o \
   stm32_ub_touch_480x272.o \
   stm32_ub_uart.o \
   main.o \
@@ -74,7 +76,7 @@ LD = arm-none-eabi-gcc
 OBJCOPY = arm-none-eabi-objcopy
 
 CFLAGS = \
-  -Wall -O2 -mthumb -mcpu=cortex-m7 -mfpu=fpv5-sp-d16 -mfloat-abi=hard \
+  -Wall -O0 -mthumb -mcpu=cortex-m7 -mfpu=fpv5-sp-d16 -mfloat-abi=hard \
   -fdata-sections -ffunction-sections -ffast-math \
   -DUSE_HAL_DRIVER -DUSE_USB_FS -DUSE_IOEXPANDER \
   -DSTM32F746xx -DUSE_STM32746G_DISCO \

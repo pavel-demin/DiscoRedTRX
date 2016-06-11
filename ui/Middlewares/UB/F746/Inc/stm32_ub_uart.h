@@ -102,10 +102,7 @@ typedef enum {
 //--------------------------------------------------------------
 // Defines fuer das Empfangen
 //--------------------------------------------------------------
-#define  RX_BUF_SIZE   482   // Groesse vom RX-Puffer in Bytes ** WK war 100
-#define  RX_FIRST_CHR  0x20  // erstes erlaubte Zeichen (Ascii-Wert)
-#define  RX_LAST_CHR   0x7E  // letztes erlaubt Zeichen (Ascii-Wert)
-#define  RX_END_CHR    0x0D  // Endekennung (Ascii-Wert)
+#define  RX_BUF_SIZE   120   // Groesse vom RX-Puffer in Bytes ** WK war 100
 
 
 
@@ -116,7 +113,7 @@ typedef enum {
 void UB_Uart_Init(void);
 void UB_Uart_SendByte(UART_NAME_t uart, uint8_t wert);
 void UB_Uart_SendString(UART_NAME_t uart, char *ptr, UART_LASTBYTE_t end_cmd);
-uint32_t UB_Uart_ReceiveString(UART_NAME_t uart, char *ptr, uint16_t MaxAnz);
+int32_t UB_Uart_ReceiveValue(UART_NAME_t uart);
 void UB_Uart_SendArray(UART_NAME_t uart, uint8_t *data, uint16_t cnt);
 uint32_t UB_Uart_ReceiveArray(UART_NAME_t uart, uint8_t *data);
 uint8_t *UB_Uart_ReceiveUART6(void); // ** WK

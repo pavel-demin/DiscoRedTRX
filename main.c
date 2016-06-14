@@ -128,8 +128,8 @@ int main()
   }
 
   SetRXAShiftRun(0, 0);
+  SetRXAPanelGain1(0, 1.0);
   SetRXAAGCMode(0, 3);
-  SetRXAAGCTop(0, 40.0);
 
   SetTXACompressorRun(1, 1);
   SetPSRunCal(1, 0);

@@ -128,14 +128,10 @@ int main()
   }
 
   SetRXAShiftRun(0, 0);
-  SetRXAAMDRun(0, 1);
-  SetRXABandpassRun(0, 1);
   SetRXAAGCMode(0, 3);
   SetRXAAGCTop(0, 40.0);
-  RXANBPSetRun(0, 0);
 
   SetTXACompressorRun(1, 1);
-  SetTXABandpassRun(1, 1);
   SetPSRunCal(1, 0);
 
   mode = 3;
@@ -150,7 +146,7 @@ int main()
   SetRXAMode(0, RXA_LSB);
   SetTXAMode(1, TXA_LSB);
 
-  SetRXABandpassFreqs(0, cutoff[mode][filter][0], cutoff[mode][filter][1]);
+  RXASetPassband(0, cutoff[mode][filter][0], cutoff[mode][filter][1]);
   SetTXABandpassFreqs(1, cutoff[mode][filter][0], cutoff[mode][filter][1]);
 
   *rx_rst |= 1;
@@ -218,7 +214,7 @@ int main()
         case 5:
           if(data > 9) continue;
           filter = data;
-          SetRXABandpassFreqs(0, cutoff[mode][filter][0], cutoff[mode][filter][1]);
+          RXASetPassband(0, cutoff[mode][filter][0], cutoff[mode][filter][1]);
           SetTXABandpassFreqs(1, cutoff[mode][filter][0], cutoff[mode][filter][1]);
           break;
         case 6:
@@ -253,7 +249,7 @@ int main()
               break;
           }
           *rx_phase = (uint32_t)floor((rx_freq + shift) / 125.0e6 * (1<<30) + 0.5);
-          SetRXABandpassFreqs(0, cutoff[mode][filter][0], cutoff[mode][filter][1]);
+          RXASetPassband(0, cutoff[mode][filter][0], cutoff[mode][filter][1]);
           SetTXABandpassFreqs(1, cutoff[mode][filter][0], cutoff[mode][filter][1]);
           break;
         case 8:

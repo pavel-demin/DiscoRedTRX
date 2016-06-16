@@ -1,5 +1,5 @@
-# svn co http://svn.tapr.org/repos_sdr_hpsdr/trunk/W5WC/PowerSDR_HPSDR_mRX_PS/Source/wdsp
-svn co http://svn.tapr.org/repos_sdr_hpsdr/trunk/W5WC/Thetis/Source/wdsp
+svn co http://svn.tapr.org/repos_sdr_hpsdr/trunk/W5WC/PowerSDR_HPSDR_mRX_PS/Source/wdsp
+# svn co http://svn.tapr.org/repos_sdr_hpsdr/trunk/W5WC/Thetis/Source/wdsp
 
 patch -p 0 < patches/wdsp.patch
 

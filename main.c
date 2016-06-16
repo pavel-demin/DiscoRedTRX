@@ -118,8 +118,8 @@ int main()
     fclose(wisdom_file);
   }
 
-  OpenChannel(0, 512, 4096, 48000, 48000, 48000, 0, 0, 0.010, 0.025, 0.000, 0.010, 0);
-  OpenChannel(1, 512, 4096, 48000, 48000, 48000, 1, 0, 0.010, 0.025, 0.000, 0.010, 0);
+  OpenChannel(0, 512, 2048, 48000, 48000, 48000, 0, 0, 0.010, 0.025, 0.000, 0.010, 0);
+  OpenChannel(1, 512, 2048, 48000, 48000, 48000, 1, 0, 0.010, 0.025, 0.000, 0.010, 0);
 
   if((wisdom_file = fopen("wdsp-fftw-wisdom.txt", "w")))
   {
@@ -130,9 +130,13 @@ int main()
   SetRXAShiftRun(0, 0);
   SetRXAPanelGain1(0, 1.0);
   SetRXAAGCMode(0, 3);
+  RXASetNC(0, 2048);
+  RXASetMP(0, 1);
 
   SetTXACompressorRun(1, 1);
   SetPSRunCal(1, 0);
+  TXASetNC(1, 2048);
+  TXASetMP(1, 1);
 
   mode = 3;
   shift = 0;

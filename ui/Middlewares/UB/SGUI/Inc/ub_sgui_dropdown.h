@@ -29,7 +29,7 @@
 #define SDROPDOWN_DEF_TEXT_COL RGB_COL_BLACK
 #define SDROPDOWN_DEF_FRAME_COL RGB_COL_BLACK
 #define SDROPDOWN_DEF_BACK_COL SGUI_WINCOL
-#define SDROPDOWN_DEF_FONT &Arial_10x15
+#define SDROPDOWN_DEF_FONT &Arial_11x18
 
 //--------------------------------------------------------------
 // einzelne Bits vom status_byte

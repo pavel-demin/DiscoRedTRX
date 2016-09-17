@@ -30,12 +30,9 @@ ADC_HandleTypeDef Adc1Handle;
 //--------------------------------------------------------------
 ADC1s_t ADC1s[] = {
     // NAME   ,PORT , PIN      , Kanal       , Mittelwerte
-    {ADC_PA0, GPIOA, GPIO_PIN_0, ADC_CHANNEL_0,
-     MW_32}, // ADC an PA0 = ADC123_IN0
-    {ADC_PA4, GPIOA, GPIO_PIN_4, ADC_CHANNEL_4,
-     MW_32}, // ADC an PA4 = ADC123_IN4
-    {ADC_PA6, GPIOA, GPIO_PIN_6, ADC_CHANNEL_6,
-     MW_32}, // ADC an PA6 = ADC123_IN6
+    {ADC_PA01, GPIOB, GPIO_PIN_0, ADC_CHANNEL_18, MW_2561}, // ADC an PB0 = ADC1_IN18 Batteriespannung
+    {ADC_PA4, GPIOA, GPIO_PIN_4, ADC_CHANNEL_4, MW_321}, // ADC an PA4 = ADC123_IN4
+    {ADC_PA6, GPIOA, GPIO_PIN_6, ADC_CHANNEL_6, MW_321}, // ADC an PA6 = ADC123_IN6
 };
 static int ADC1s_ANZ = sizeof(ADC1s) / sizeof(ADC1s[0]); // Anzahl der Eintraege
 
@@ -52,6 +49,7 @@ void UB_ADC1_SINGLE_Init(void) {
 // und auslesen des Messwertes
 //--------------------------------------------------------------
 uint16_t UB_ADC1_SINGLE_Read(ADC1s_NAME_t adc_name) {
+  uint8_t retv;
   uint16_t messwert = 0;
   ADC_ChannelConfTypeDef sConfig;
 
@@ -66,9 +64,11 @@ uint16_t UB_ADC1_SINGLE_Read(ADC1s_NAME_t adc_name) {
   if (HAL_ADC_Start(&Adc1Handle) != HAL_OK)
     return 0;
   // warte bis Messung fertig ist
-  HAL_ADC_PollForConversion(&Adc1Handle, 10);
-  if (HAL_IS_BIT_CLR(HAL_ADC_GetState(&Adc1Handle), HAL_ADC_STATE_REG_EOC))
-    return 0;
+  retv = HAL_ADC_PollForConversion(&Adc1Handle, 10);
+  if (retv != 0)
+    return retv;
+  if (HAL_ADC_GetState(&Adc1Handle) != HAL_ADC_STATE_EOC_REG)
+    return 4;
   // Messwert auslesen
   messwert = HAL_ADC_GetValue(&Adc1Handle);
 
@@ -84,30 +84,33 @@ uint16_t UB_ADC1_SINGLE_Read_MW(ADC1s_NAME_t adc_name) {
   uint16_t messwert, n;
   uint16_t anz_mw = 1, anz_bit = 0;
 
-  if (ADC1s[adc_name].ADC_MW == MW_NONE) {
+  if (ADC1s[adc_name].ADC_MW == MW_NONE1) {
     anz_mw = 1;
     anz_bit = 0;
-  } else if (ADC1s[adc_name].ADC_MW == MW_2) {
+  } else if (ADC1s[adc_name].ADC_MW == MW_21) {
     anz_mw = 2;
     anz_bit = 1;
-  } else if (ADC1s[adc_name].ADC_MW == MW_4) {
+  } else if (ADC1s[adc_name].ADC_MW == MW_41) {
     anz_mw = 4;
     anz_bit = 2;
-  } else if (ADC1s[adc_name].ADC_MW == MW_8) {
+  } else if (ADC1s[adc_name].ADC_MW == MW_81) {
     anz_mw = 8;
     anz_bit = 3;
-  } else if (ADC1s[adc_name].ADC_MW == MW_16) {
+  } else if (ADC1s[adc_name].ADC_MW == MW_161) {
     anz_mw = 16;
     anz_bit = 4;
-  } else if (ADC1s[adc_name].ADC_MW == MW_32) {
+  } else if (ADC1s[adc_name].ADC_MW == MW_321) {
     anz_mw = 32;
     anz_bit = 5;
-  } else if (ADC1s[adc_name].ADC_MW == MW_64) {
+  } else if (ADC1s[adc_name].ADC_MW == MW_641) {
     anz_mw = 64;
     anz_bit = 6;
-  } else if (ADC1s[adc_name].ADC_MW == MW_128) {
+  } else if (ADC1s[adc_name].ADC_MW == MW_1281) {
     anz_mw = 128;
     anz_bit = 7;
+  } else if (ADC1s[adc_name].ADC_MW == MW_2561) {
+    anz_mw = 256;
+    anz_bit = 8;
   }
 
   for (n = 0; n < anz_mw; n++) {

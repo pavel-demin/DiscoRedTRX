@@ -56,6 +56,12 @@ typedef struct UB_pFont32_t {
 // in der CooCox-IDE hinzugefügt werden
 //--------------------------------------------------------------
 // monospaced
+extern UB_Font Font_9x15;
+extern UB_Font Font_11x17;
+extern UB_Font Font_12x18;
+extern UB_Font32 Font_17x24;
+extern UB_Font32 Font_17x28;
+
 extern UB_Font Arial_7x10;
 extern UB_Font Arial_8x13;
 extern UB_Font Arial_10x15;

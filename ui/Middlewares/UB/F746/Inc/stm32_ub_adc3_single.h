@@ -17,8 +17,8 @@
 //--------------------------------------------------------------
 typedef enum {
   ADC_PA0 = 0, // PA0
-  ADC_PF6 = 1, // PF6
-  ADC_PF7 = 2  // PF7
+  ADC_PF9 = 1, // PF9
+  ADC_PF8 = 2  // PF8
 } ADC3s_NAME_t;
 
 //--------------------------------------------------------------
@@ -30,9 +30,10 @@ typedef enum {
   MW_4,        // 4 Mittelwerte
   MW_8,        // 8 Mittelwerte
   MW_16,       // 16 Mittelwerte
-  MW_32,       // 32 Mittelwerte
+  MW_323,      // 32 Mittelwerte
   MW_64,       // 64 Mittelwerte
-  MW_128       // 128 Mittelwerte
+  MW_128,      // 128 Mittelwerte
+  MW_256       // 256 Mittelwerte
 } ADC3s_MW_t;
 
 //--------------------------------------------------------------
@@ -62,6 +63,9 @@ typedef struct {
 // Globale Funktionen
 //--------------------------------------------------------------
 void UB_ADC3_SINGLE_Init(void);
+uint16_t UB_ADC3_SINGLE_Start(ADC3s_NAME_t adc_name); // ** WK
+int16_t UB_ADC3_SINGLE_Poll(ADC3s_NAME_t adc_name); // ** WK
+
 uint16_t UB_ADC3_SINGLE_Read(ADC3s_NAME_t adc_name);
 uint16_t UB_ADC3_SINGLE_Read_MW(ADC3s_NAME_t adc_name);
 

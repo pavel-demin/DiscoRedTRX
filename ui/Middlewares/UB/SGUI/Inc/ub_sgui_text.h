@@ -26,7 +26,7 @@
 //--------------------------------------------------------------
 #define STEXT_DEF_TEXT_COL RGB_COL_BLACK
 #define STEXT_DEF_BACK_COL SGUI_WINCOL
-#define STEXT_DEF_FONT &Arial_10x15
+#define STEXT_DEF_FONT &Arial_11x18
 
 //--------------------------------------------------------------
 // einzelne Bits vom status_byte

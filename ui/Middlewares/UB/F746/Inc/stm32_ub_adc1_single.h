@@ -16,23 +16,24 @@
 // (keine Nummer doppelt und von 0 beginnend)
 //--------------------------------------------------------------
 typedef enum {
-  ADC_PA0 = 0, // PA0
-  ADC_PA4 = 1, // PA4
-  ADC_PA6 = 2  // PA6
+  ADC_PA01 = 0, // PA0
+  ADC_PA4 = 1,  // PA4
+  ADC_PA6 = 2   // PA6
 } ADC1s_NAME_t;
 
 //--------------------------------------------------------------
 // Anzahl der Mittelwerte
 //--------------------------------------------------------------
 typedef enum {
-  MW_NONE = 0, // keine Mittelwerte
-  MW_2,        // 2 Mittelwerte
-  MW_4,        // 4 Mittelwerte
-  MW_8,        // 8 Mittelwerte
-  MW_16,       // 16 Mittelwerte
-  MW_32,       // 32 Mittelwerte
-  MW_64,       // 64 Mittelwerte
-  MW_128       // 128 Mittelwerte
+  MW_NONE1 = 0, // keine Mittelwerte
+  MW_21,        // 2 Mittelwerte
+  MW_41,        // 4 Mittelwerte
+  MW_81,        // 8 Mittelwerte
+  MW_161,       // 16 Mittelwerte
+  MW_321,       // 32 Mittelwerte
+  MW_641,       // 64 Mittelwerte
+  MW_1281,      // 128 Mittelwerte
+  MW_2561       // 256 Mittelwerte
 } ADC1s_MW_t;
 
 //--------------------------------------------------------------

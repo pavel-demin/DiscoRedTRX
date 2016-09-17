@@ -26,11 +26,11 @@
 // default einstellungen
 //--------------------------------------------------------------
 #define SLISTBOX_DEF_FRAME_SIZE 1
-#define SLISTBOX_DEF_SLIDER_SIZE 20
+#define SLISTBOX_DEF_SLIDER_SIZE 30
 #define SLISTBOX_DEF_TEXT_COL RGB_COL_BLACK
 #define SLISTBOX_DEF_FRAME_COL RGB_COL_BLACK
 #define SLISTBOX_DEF_BACK_COL SGUI_WINCOL
-#define SLISTBOX_DEF_FONT &Arial_10x15
+#define SLISTBOX_DEF_FONT &Arial_13x19
 
 //--------------------------------------------------------------
 // einzelne Bits vom status_byte

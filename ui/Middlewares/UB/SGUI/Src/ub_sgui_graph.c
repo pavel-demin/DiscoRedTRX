@@ -206,7 +206,7 @@ uint8_t SGUI_GraphGetCHValue(SGRAPH_t *ptr, uint8_t ch, uint16_t pos) {
   if (ptr == NULL)
     return 0;
   if (ch > ptr->ch_cnt)
-    return 0; // ** WK (war >=ptr->ch_cnt)
+    return 0; // ** WK (war >=ptr->ch_cnt - 1)
   if (pos >= ptr->item_cnt)
     return 0;
 
@@ -337,7 +337,7 @@ void P_SGUI_GraphDraw(SGRAPH_t *ptr) {
   w = ptr->width;
 
   for (i = 0; i < w; i++) {
-    calc = (uint8_t)((pointer[i + 2] * h) / 256);
+    calc = (uint8_t)((pointer[i] * h) / 256);
     SGUI_GraphWriteColumn(ptr, 1, i, calc); // draw one column
   }
   DrawScale();

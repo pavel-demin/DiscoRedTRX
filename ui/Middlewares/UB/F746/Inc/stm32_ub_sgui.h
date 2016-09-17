@@ -29,9 +29,9 @@
 // werden sollen oder nicht
 //  0=disable, 1=enable
 //--------------------------------------------------------------
-#define SGUI_USE_PANEL 1
+#define SGUI_USE_PANEL 0
 #define SGUI_USE_BUTTON 1
-#define SGUI_USE_LED 1
+#define SGUI_USE_LED 0
 #define SGUI_USE_LABEL 1
 #define SGUI_USE_CHECKBOX 1
 #define SGUI_USE_GAUGE 1
@@ -39,10 +39,10 @@
 #define SGUI_USE_LISTBOX 1
 #define SGUI_USE_SLIDER 1
 #define SGUI_USE_DROPDOWN 1
-#define SGUI_USE_SELECTBTN 1
-#define SGUI_USE_INTEDIT 1
-#define SGUI_USE_FLOATEDIT 1
-#define SGUI_USE_PICTURE 1
+#define SGUI_USE_SELECTBTN 0
+#define SGUI_USE_INTEDIT 0
+#define SGUI_USE_FLOATEDIT 0
+#define SGUI_USE_PICTURE 0
 #define SGUI_USE_GRAPH 1
 
 #if SGUI_USE_PANEL == 1

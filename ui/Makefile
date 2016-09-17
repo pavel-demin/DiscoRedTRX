@@ -2,6 +2,7 @@ TARGET = DiscoRedTRX
 
 OBJECTS = \
   stm32f7xx_hal.o \
+  stm32f7xx_hal_adc.o \
   stm32f7xx_hal_cortex.o \
   stm32f7xx_hal_dma.o \
   stm32f7xx_hal_dma2d.o \
@@ -43,7 +44,10 @@ OBJECTS = \
   ub_font_arial_10x15.o \
   ub_font_arial_11x18.o \
   ub_font_arial_13x19.o \
+  ub_font_arial_14x22.o \
   ub_font_arial_16x25.o \
+  stm32_ub_adc1_single.o \
+  stm32_ub_adc3_single.o \
   stm32_ub_font.o \
   stm32_ub_graphic2d.o \
   stm32_ub_i2c3.o \

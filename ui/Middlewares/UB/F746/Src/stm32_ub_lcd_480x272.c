@@ -14,7 +14,7 @@
 //            Auflösung : 480 x 272 Pixel
 //            Farbmode = 16bit (5R6G5B = RGB565)
 //            Display = RK043FN48H-CT672B
-//          
+//
 // Hinweis  : Das Display benutzt die CPU-Pins :
 //
 //             PI15 = R0    PJ7  = G0    PE4  = B0
@@ -34,13 +34,11 @@
 // HSYNC+VSYNC im H-File aktivieren falls notwendig
 //--------------------------------------------------------------
 
-
 //--------------------------------------------------------------
 // Includes
 //--------------------------------------------------------------
 #include "stm32_ub_lcd_480x272.h"
 #include "stm32_ub_sdram.h"
-
 
 //--------------------------------------------------------------
 // interne Funktionen
@@ -49,17 +47,12 @@ static void P_LCD_480x272_Init(void);
 __weak void P_LCD_480x272_ClockConfig(LTDC_HandleTypeDef *hltdc, void *Params);
 __weak void P_LCD_480x272_MspInit(LTDC_HandleTypeDef *hltdc, void *Params);
 
-
-
 //--------------------------------------------------------------
 // Globale Variabeln
 //--------------------------------------------------------------
-static uint16_t aktCursorX,aktCursorY;
+static uint16_t aktCursorX, aktCursorY;
 static uint32_t aktCursorPos;
-static LTDC_HandleTypeDef  hLtdcHandler;
-
-
-
+static LTDC_HandleTypeDef hLtdcHandler;
 
 //--------------------------------------------------------------
 // Init vom LCD-Display
@@ -67,36 +60,33 @@ static LTDC_HandleTypeDef  hLtdcHandler;
 //  -> ERROR   , wenn Display nicht gefunden wurde
 //  -> SUCCESS , wenn Display OK
 //--------------------------------------------------------------
-ErrorStatus UB_LCD_Init(void)
-{ 
-  ErrorStatus ret_wert=ERROR;
+ErrorStatus UB_LCD_Init(void) {
+  ErrorStatus ret_wert = ERROR;
 
   // beim init auf Landscape-Mode
-  LCD_DISPLAY_MODE=LANDSCAPE;
+  LCD_DISPLAY_MODE = LANDSCAPE;
   // init vom SDRAM
   UB_SDRAM_Init();
   // init dvom LCD
   P_LCD_480x272_Init();
 
-  ret_wert=SUCCESS;
-  aktCursorX=0;
-  aktCursorY=0;
-  aktCursorPos=0;
+  ret_wert = SUCCESS;
+  aktCursorX = 0;
+  aktCursorY = 0;
+  aktCursorPos = 0;
 
-  LCD_CurrentFrameBuffer=LCD_FRAME_BUFFER;
+  LCD_CurrentFrameBuffer = LCD_FRAME_BUFFER;
   LCD_CurrentLayer = 0;
-  LCD_CurrentOrientation=0;
+  LCD_CurrentOrientation = 0;
 
-  return(ret_wert);
+  return (ret_wert);
 }
-
 
 //--------------------------------------------------------------
 // stellt beide Layer auf "Fullscreen-Mode"
 //--------------------------------------------------------------
-void UB_LCD_LayerInit_Fullscreen(void)
-{
-  LTDC_LayerCfgTypeDef  layer_cfg;
+void UB_LCD_LayerInit_Fullscreen(void) {
+  LTDC_LayerCfgTypeDef layer_cfg;
 
   // Layer 0
   layer_cfg.WindowX0 = 0;
@@ -122,7 +112,7 @@ void UB_LCD_LayerInit_Fullscreen(void)
   layer_cfg.WindowY0 = 0;
   layer_cfg.WindowY1 = LCD_MAXY;
   layer_cfg.PixelFormat = LTDC_PIXEL_FORMAT_RGB565;
-  layer_cfg.FBStartAdress = LCD_FRAME_BUFFER+LCD_FRAME_OFFSET;
+  layer_cfg.FBStartAdress = LCD_FRAME_BUFFER + LCD_FRAME_OFFSET;
   layer_cfg.Alpha = 255;
   layer_cfg.Alpha0 = 0;
   layer_cfg.Backcolor.Blue = 0;
@@ -135,99 +125,89 @@ void UB_LCD_LayerInit_Fullscreen(void)
   HAL_LTDC_ConfigLayer(&hLtdcHandler, &layer_cfg, 1);
 }
 
-
 //--------------------------------------------------------------
 // Hintergrund-Layer aktivieren
 //--------------------------------------------------------------
-void UB_LCD_SetLayer_1(void)
-{
+void UB_LCD_SetLayer_1(void) {
   LCD_CurrentFrameBuffer = LCD_FRAME_BUFFER;
   LCD_CurrentLayer = 0;
 }
 
-
 //--------------------------------------------------------------
 // Vordergrund-Layer aktivieren
 //--------------------------------------------------------------
-void UB_LCD_SetLayer_2(void)
-{
+void UB_LCD_SetLayer_2(void) {
   LCD_CurrentFrameBuffer = LCD_FRAME_BUFFER + LCD_FRAME_OFFSET;
   LCD_CurrentLayer = 1;
 }
 
-
 //--------------------------------------------------------------
 // Füllt den aktuellen Layer komplett mit einer Farbe
 //--------------------------------------------------------------
-void UB_LCD_FillLayer(uint16_t color)
-{
+void UB_LCD_FillLayer(uint16_t color) {
   uint32_t index = 0;
 
   // Bildschirm loeschen
-  for (index = 0x00; index < LCD_FRAME_OFFSET; index+=2) {
-    *(volatile uint16_t*)(LCD_CurrentFrameBuffer + index) = color;
+  for (index = 0x00; index < LCD_FRAME_OFFSET; index += 2) {
+    *(volatile uint16_t *)(LCD_CurrentFrameBuffer + index) = color;
   }
 }
-
 
 //--------------------------------------------------------------
 // setzt Transparenz Wert vom aktuellen Layer
 // wert : [0...255] 0=durchsichtig ... 255=solid
 //--------------------------------------------------------------
-void UB_LCD_SetTransparency(uint8_t wert)
-{
+void UB_LCD_SetTransparency(uint8_t wert) {
   if (LCD_CurrentLayer == 0) {
     HAL_LTDC_SetAlpha(&hLtdcHandler, wert, 0);
-  }
-  else {
+  } else {
     HAL_LTDC_SetAlpha(&hLtdcHandler, wert, 1);
   }
 }
 
-
 //--------------------------------------------------------------
 // setzt den Cursor auf x,y Position
 //--------------------------------------------------------------
-void UB_LCD_SetCursor2Draw(uint16_t xpos, uint16_t ypos)
-{
-  aktCursorX=xpos;
-  aktCursorY=ypos;
+void UB_LCD_SetCursor2Draw(uint16_t xpos, uint16_t ypos) {
+  aktCursorX = xpos;
+  aktCursorY = ypos;
 
-  aktCursorPos=LCD_CurrentFrameBuffer+(2*((aktCursorY*LCD_MAXX)+aktCursorX));
+  aktCursorPos =
+      LCD_CurrentFrameBuffer + (2 * ((aktCursorY * LCD_MAXX) + aktCursorX));
 }
-
 
 //--------------------------------------------------------------
 // zeichnet ein Pixel an aktueller XY-Position
 // und incrementiert Cursor
 //--------------------------------------------------------------
-void UB_LCD_DrawPixel(uint16_t color)
-{
-  *(volatile uint16_t*)(aktCursorPos)=color;
-  if(LCD_DISPLAY_MODE==LANDSCAPE) {
+void UB_LCD_DrawPixel(uint16_t color) {
+  *(volatile uint16_t *)(aktCursorPos) = color;
+  if (LCD_DISPLAY_MODE == LANDSCAPE) {
     aktCursorX++;
-    if(aktCursorX>=LCD_MAXX) {
-      aktCursorX=0;
+    if (aktCursorX >= LCD_MAXX) {
+      aktCursorX = 0;
       aktCursorY++;
-      if(aktCursorY>=LCD_MAXY) aktCursorY=0;
+      if (aktCursorY >= LCD_MAXY)
+        aktCursorY = 0;
     }
-  }
-  else {
+  } else {
     aktCursorY++;
-    if(aktCursorY>=LCD_MAXY) {
-      aktCursorY=0;
+    if (aktCursorY >= LCD_MAXY) {
+      aktCursorY = 0;
       aktCursorX++;
-      if(aktCursorX>=LCD_MAXX) aktCursorX=0;
+      if (aktCursorX >= LCD_MAXX)
+        aktCursorX = 0;
     }
   }
-  aktCursorPos=LCD_CurrentFrameBuffer+(2*((aktCursorY*LCD_MAXX)+aktCursorX));
+  aktCursorPos =
+      LCD_CurrentFrameBuffer + (2 * ((aktCursorY * LCD_MAXX) + aktCursorX));
 }
 
 void WK_LCD_DrawPixel(uint16_t xpos, uint16_t ypos, uint16_t color) // ** WK
 {
-  *(volatile uint16_t*)(LCD_CurrentFrameBuffer+(2*((ypos*LCD_MAXX)+xpos)))=color;
+  *(volatile uint16_t *)(LCD_CurrentFrameBuffer +
+                         (2 * ((ypos * LCD_MAXX) + xpos))) = color;
 }
-
 
 //--------------------------------------------------------------
 // Screen-Mode einstellen
@@ -235,89 +215,72 @@ void WK_LCD_DrawPixel(uint16_t xpos, uint16_t ypos, uint16_t color) // ** WK
 //
 // Mode : [PORTRAIT=default, LANDSCAPE]
 //--------------------------------------------------------------
-void UB_LCD_SetMode(LCD_MODE_t mode)
-{
-  if(mode==PORTRAIT) {
-    LCD_DISPLAY_MODE=PORTRAIT;
-  }
-  else {
-    LCD_DISPLAY_MODE=LANDSCAPE;
+void UB_LCD_SetMode(LCD_MODE_t mode) {
+  if (mode == PORTRAIT) {
+    LCD_DISPLAY_MODE = PORTRAIT;
+  } else {
+    LCD_DISPLAY_MODE = LANDSCAPE;
   }
 }
-
 
 //--------------------------------------------------------------
 // Screen-Rotation einstellen auf 0 Grad
 //--------------------------------------------------------------
-void UB_LCD_Rotate_0(void)
-{
-  LCD_CurrentOrientation=0;
-}
-
+void UB_LCD_Rotate_0(void) { LCD_CurrentOrientation = 0; }
 
 //--------------------------------------------------------------
 // Screen-Rotation einstellen auf 180 Grad
 //--------------------------------------------------------------
-void UB_LCD_Rotate_180(void)
-{
-  LCD_CurrentOrientation=1;
-}
-
+void UB_LCD_Rotate_180(void) { LCD_CurrentOrientation = 1; }
 
 //--------------------------------------------------------------
 // kopiert kompletten Inhalt von Layer1 in Layer2
 // (Hintergrund --> Vordergrund)
 //--------------------------------------------------------------
-void UB_LCD_Copy_Layer1_to_Layer2(void)
-{
+void UB_LCD_Copy_Layer1_to_Layer2(void) {
   uint32_t index;
   uint32_t quelle = LCD_FRAME_BUFFER;
   uint32_t ziel = LCD_FRAME_BUFFER + LCD_FRAME_OFFSET;
 
-  for (index = 0 ; index < LCD_FRAME_OFFSET;index+=2) {
-    *(volatile uint16_t*)(ziel + index) = *(volatile uint16_t*)(quelle + index);
+  for (index = 0; index < LCD_FRAME_OFFSET; index += 2) {
+    *(volatile uint16_t *)(ziel + index) =
+        *(volatile uint16_t *)(quelle + index);
   }
 }
-
 
 //--------------------------------------------------------------
 // kopiert kompletten Inhalt von Layer2 in Layer1
 // (Vordergrund --> Hintergrund)
 //--------------------------------------------------------------
-void UB_LCD_Copy_Layer2_to_Layer1(void)
-{
+void UB_LCD_Copy_Layer2_to_Layer1(void) {
   uint32_t index;
   uint32_t quelle = LCD_FRAME_BUFFER + LCD_FRAME_OFFSET;
   uint32_t ziel = LCD_FRAME_BUFFER;
 
-  for (index = 0 ; index < LCD_FRAME_OFFSET;index+=2) {
-    *(volatile uint16_t*)(ziel + index) = *(volatile uint16_t*)(quelle + index);
+  for (index = 0; index < LCD_FRAME_OFFSET; index += 2) {
+    *(volatile uint16_t *)(ziel + index) =
+        *(volatile uint16_t *)(quelle + index);
   }
 }
-
 
 //--------------------------------------------------------------
 // wechselt den aktiven Layer zum zeichnen
 // und zeigt den jeweils anderen Layer an
 //--------------------------------------------------------------
-void UB_LCD_Refresh(void)
-{
-  if(LCD_CurrentLayer==0) {
+void UB_LCD_Refresh(void) {
+  if (LCD_CurrentLayer == 0) {
     UB_LCD_SetLayer_2();
     UB_LCD_SetTransparency(0);
-  }
-  else {
+  } else {
     UB_LCD_SetTransparency(255);
     UB_LCD_SetLayer_1();
   }
 }
 
-
 //--------------------------------------------------------------
 // interne Funktion
 //--------------------------------------------------------------
-static void P_LCD_480x272_Init(void)
-{
+static void P_LCD_480x272_Init(void) {
   /* Select the used LCD */
 
   /* The RK043FN48H LCD 480x272 is selected */
@@ -326,16 +289,20 @@ static void P_LCD_480x272_Init(void)
   hLtdcHandler.Init.VerticalSync = (RK043FN48H_VSYNC - 1);
   hLtdcHandler.Init.AccumulatedHBP = (RK043FN48H_HSYNC + RK043FN48H_HBP - 1);
   hLtdcHandler.Init.AccumulatedVBP = (RK043FN48H_VSYNC + RK043FN48H_VBP - 1);
-  hLtdcHandler.Init.AccumulatedActiveH = (RK043FN48H_HEIGHT + RK043FN48H_VSYNC + RK043FN48H_VBP - 1);
-  hLtdcHandler.Init.AccumulatedActiveW = (RK043FN48H_WIDTH + RK043FN48H_HSYNC + RK043FN48H_HBP - 1);
-  hLtdcHandler.Init.TotalHeigh = (RK043FN48H_HEIGHT + RK043FN48H_VSYNC + RK043FN48H_VBP + RK043FN48H_VFP - 1);
-  hLtdcHandler.Init.TotalWidth = (RK043FN48H_WIDTH + RK043FN48H_HSYNC + RK043FN48H_HBP + RK043FN48H_HFP - 1);
+  hLtdcHandler.Init.AccumulatedActiveH =
+      (RK043FN48H_HEIGHT + RK043FN48H_VSYNC + RK043FN48H_VBP - 1);
+  hLtdcHandler.Init.AccumulatedActiveW =
+      (RK043FN48H_WIDTH + RK043FN48H_HSYNC + RK043FN48H_HBP - 1);
+  hLtdcHandler.Init.TotalHeigh = (RK043FN48H_HEIGHT + RK043FN48H_VSYNC +
+                                  RK043FN48H_VBP + RK043FN48H_VFP - 1);
+  hLtdcHandler.Init.TotalWidth = (RK043FN48H_WIDTH + RK043FN48H_HSYNC +
+                                  RK043FN48H_HBP + RK043FN48H_HFP - 1);
 
   /* LCD clock configuration */
   P_LCD_480x272_ClockConfig(&hLtdcHandler, NULL);
 
   /* Initialize the LCD pixel width and pixel height */
-  hLtdcHandler.LayerCfg->ImageWidth  = RK043FN48H_WIDTH;
+  hLtdcHandler.LayerCfg->ImageWidth = RK043FN48H_WIDTH;
   hLtdcHandler.LayerCfg->ImageHeight = RK043FN48H_HEIGHT;
 
   /* Background value */
@@ -350,9 +317,9 @@ static void P_LCD_480x272_Init(void)
   hLtdcHandler.Init.PCPolarity = LTDC_PCPOLARITY_IPC;
   hLtdcHandler.Instance = LTDC;
 
-  if(HAL_LTDC_GetState(&hLtdcHandler) == HAL_LTDC_STATE_RESET)
-  {
-    /* Initialize the LCD Msp: this __weak function can be rewritten by the application */
+  if (HAL_LTDC_GetState(&hLtdcHandler) == HAL_LTDC_STATE_RESET) {
+    /* Initialize the LCD Msp: this __weak function can be rewritten by the
+     * application */
     P_LCD_480x272_MspInit(&hLtdcHandler, NULL);
   }
   HAL_LTDC_Init(&hLtdcHandler);
@@ -367,9 +334,8 @@ static void P_LCD_480x272_Init(void)
 //--------------------------------------------------------------
 // interne Funktion
 //--------------------------------------------------------------
-__weak void P_LCD_480x272_ClockConfig(LTDC_HandleTypeDef *hltdc, void *Params)
-{
-  static RCC_PeriphCLKInitTypeDef  periph_clk_init_struct;
+__weak void P_LCD_480x272_ClockConfig(LTDC_HandleTypeDef *hltdc, void *Params) {
+  static RCC_PeriphCLKInitTypeDef periph_clk_init_struct;
 
   /* RK043FN48H LCD clock configuration */
   /* PLLSAI_VCO Input = HSE_VALUE/PLL_M = 1 Mhz */
@@ -386,8 +352,7 @@ __weak void P_LCD_480x272_ClockConfig(LTDC_HandleTypeDef *hltdc, void *Params)
 //--------------------------------------------------------------
 // interne Funktion
 //--------------------------------------------------------------
-__weak void P_LCD_480x272_MspInit(LTDC_HandleTypeDef *hltdc, void *Params)
-{
+__weak void P_LCD_480x272_MspInit(LTDC_HandleTypeDef *hltdc, void *Params) {
   GPIO_InitTypeDef gpio_init_structure;
 
   /* Enable the LTDC and DMA2D clocks */
@@ -405,58 +370,59 @@ __weak void P_LCD_480x272_MspInit(LTDC_HandleTypeDef *hltdc, void *Params)
 
   /*** LTDC Pins configuration ***/
   /* GPIOE configuration */
-  gpio_init_structure.Pin       = GPIO_PIN_4;
-  gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
-  gpio_init_structure.Pull      = GPIO_NOPULL;
-  gpio_init_structure.Speed     = GPIO_SPEED_FAST;
+  gpio_init_structure.Pin = GPIO_PIN_4;
+  gpio_init_structure.Mode = GPIO_MODE_AF_PP;
+  gpio_init_structure.Pull = GPIO_NOPULL;
+  gpio_init_structure.Speed = GPIO_SPEED_FAST;
   gpio_init_structure.Alternate = GPIO_AF14_LTDC;
   HAL_GPIO_Init(GPIOE, &gpio_init_structure);
 
   /* GPIOG configuration */
-  gpio_init_structure.Pin       = GPIO_PIN_12;
-  gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
+  gpio_init_structure.Pin = GPIO_PIN_12;
+  gpio_init_structure.Mode = GPIO_MODE_AF_PP;
   gpio_init_structure.Alternate = GPIO_AF9_LTDC;
   HAL_GPIO_Init(GPIOG, &gpio_init_structure);
 
-  /* GPIOI LTDC alternate configuration */
-#if USE_SYNC_GPIO==1
-  gpio_init_structure.Pin       = GPIO_PIN_8 | GPIO_PIN_9 | GPIO_PIN_10 | \
-                                  GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
-  gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
+/* GPIOI LTDC alternate configuration */
+#if USE_SYNC_GPIO == 1
+  gpio_init_structure.Pin = GPIO_PIN_8 | GPIO_PIN_9 | GPIO_PIN_10 |
+                            GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
+  gpio_init_structure.Mode = GPIO_MODE_AF_PP;
   gpio_init_structure.Alternate = GPIO_AF14_LTDC;
   HAL_GPIO_Init(GPIOI, &gpio_init_structure);
 #else
-  gpio_init_structure.Pin       = GPIO_PIN_8 | \
-                                  GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
-  gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
+  gpio_init_structure.Pin =
+      GPIO_PIN_8 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
+  gpio_init_structure.Mode = GPIO_MODE_AF_PP;
   gpio_init_structure.Alternate = GPIO_AF14_LTDC;
   HAL_GPIO_Init(GPIOI, &gpio_init_structure);
 #endif
 
   /* GPIOJ configuration */
-  gpio_init_structure.Pin       = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3 | \
-                                  GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7 | \
-                                  GPIO_PIN_8 | GPIO_PIN_9 | GPIO_PIN_10 | GPIO_PIN_11 | \
-                                  GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
-  gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
+  gpio_init_structure.Pin =
+      GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_3 | GPIO_PIN_4 |
+      GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9 |
+      GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_13 | GPIO_PIN_14 | GPIO_PIN_15;
+  gpio_init_structure.Mode = GPIO_MODE_AF_PP;
   gpio_init_structure.Alternate = GPIO_AF14_LTDC;
   HAL_GPIO_Init(GPIOJ, &gpio_init_structure);
 
   /* GPIOK configuration */
-  gpio_init_structure.Pin       = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_4 | \
-                                  GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7;
-  gpio_init_structure.Mode      = GPIO_MODE_AF_PP;
+  gpio_init_structure.Pin = GPIO_PIN_0 | GPIO_PIN_1 | GPIO_PIN_2 | GPIO_PIN_4 |
+                            GPIO_PIN_5 | GPIO_PIN_6 | GPIO_PIN_7;
+  gpio_init_structure.Mode = GPIO_MODE_AF_PP;
   gpio_init_structure.Alternate = GPIO_AF14_LTDC;
   HAL_GPIO_Init(GPIOK, &gpio_init_structure);
 
   /* LCD_DISP GPIO configuration */
-  gpio_init_structure.Pin       = LCD_DISP_PIN;     /* LCD_DISP pin has to be manually controlled */
-  gpio_init_structure.Mode      = GPIO_MODE_OUTPUT_PP;
+  gpio_init_structure.Pin =
+      LCD_DISP_PIN; /* LCD_DISP pin has to be manually controlled */
+  gpio_init_structure.Mode = GPIO_MODE_OUTPUT_PP;
   HAL_GPIO_Init(LCD_DISP_GPIO_PORT, &gpio_init_structure);
 
   /* LCD_BL_CTRL GPIO configuration */
-  gpio_init_structure.Pin       = LCD_BL_CTRL_PIN;  /* LCD_BL_CTRL pin has to be manually controlled */
-  gpio_init_structure.Mode      = GPIO_MODE_OUTPUT_PP;
+  gpio_init_structure.Pin =
+      LCD_BL_CTRL_PIN; /* LCD_BL_CTRL pin has to be manually controlled */
+  gpio_init_structure.Mode = GPIO_MODE_OUTPUT_PP;
   HAL_GPIO_Init(LCD_BL_CTRL_GPIO_PORT, &gpio_init_structure);
 }
-

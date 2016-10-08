@@ -1,17 +1,5 @@
-Commands to install and run this program on Red Pitaya.
+Commands to install and run this program on Red Pitaya:
 
-1. Commands for GNU Radio version:
-apt-get install make python-serial python-alsaaudio
-wget https://github.com/pavel-demin/DiscoRedTRX/archive/master.tar.gz
-tar -zxf master.tar.gz
-cd DiscoRedTRX-master
-export PYTHONPATH=grc:.
-export GRC_BLOCKS_PATH=grc:.
-make -C grc
-python main.py
-
-2. Commands for WDSP version:
-apt-get install make libasound2-dev libfftw3-dev subversion
 wget https://github.com/pavel-demin/DiscoRedTRX/archive/master.tar.gz
 tar -zxf master.tar.gz
 cd DiscoRedTRX-master

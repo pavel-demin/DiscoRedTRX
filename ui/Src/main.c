@@ -51,8 +51,9 @@ SLISTBOX_t *lb, *lb1, *lb2, *lb12, *lb22, *lb3, *lb13, *lb171, *lb191, *lb192,
     *lb157; // pointer auf Listbox
 SBUTTON_t *btn, *btn9, *btn10, *btn11, *btn12, *btn13, *btn130, *btn150,
     *btn151, *btn152, *btn171, *Storebtn, *cwbtn, *btnX, *btn191, *btn192,
-    *btn193, *btn194, *btn195, *btn196, *btnCal,
-    *btn_ptt1; // pointer auf buttons
+    *btn193, *btn194, *btn195, *btn196, *btnCal, *btn_ptt1, *cwbtnDot1,
+    *cwbtnDot2, *cwbtnDot3, *cwbtnDot4, *cwbtnDot5,
+    *cwbtn2; // pointer auf buttons
 SGRAPH_t *graph;
 SDROPDOWN_t *dd1;
 SRBTN_t *rb1, *rb2, *rb3, *rb161, *rb162, *rb163;
@@ -129,7 +130,6 @@ uint16_t ZeroForw = 0;
 uint16_t ZeroBackw = 0;
 
 // This area is stored in FlashROM
-// ***********************************************************************************************
 int16_t DummyData[2] = {
     12354,
     8235}; // to go back to default values: put here other values and compile
@@ -157,9 +157,9 @@ uint16_t AttenValRX = 0;       // RX attenuator
 int8_t gain[16] = {0, 12, 10, 8, 6, 4, 2, 0,
                    0, 0,  0,  0, 0, 0, 0, 0}; // TX attenuator values per band
 int32_t OldFrequ = 0;
-int16_t reserve[21] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                       0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-// *****************************************************************************************************************************
+uint8_t SidetoneValueCW = 5;
+uint16_t KeyerSpeed = 120;
+int16_t reserve[18] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 uint8_t BandPtr = 0;
 uint8_t MemoPtr = 0;
 uint8_t AttPtr = 0;
@@ -228,7 +228,19 @@ char new = 1;
 char *ModeTxt, *BWTxt, *AGCtxt;
 char f1[7];
 
-uint16_t timer1 = 0; // increases all 10 ms
+uint32_t timer1 = 0; // increases all 10 ms
+uint16_t timer2 = 0; // increases all 10 ms
+uint16_t timera1 = 0;
+uint16_t timera2 = 0;
+uint16_t timera3 = 0;
+uint16_t timera4 = 0;
+uint16_t timera5 = 0;
+uint8_t countera1 = 0;
+uint8_t countera2 = 0;
+uint8_t countera3 = 0;
+uint8_t countera4 = 0;
+uint8_t countera5 = 0;
+char lock = 0;
 
 uint8_t count = 0;
 
@@ -236,6 +248,10 @@ char VolChar[3] = "50";
 SSLIDER_t *volume;
 char MicVolChar[3] = "50";
 SSLIDER_t *Micvolume;
+
+SSLIDER_t *SidetoneValue;
+SSLIDER_t *SLKeyerspeed;
+
 SSLIDER_t *CalValue; // for Calibrate
 
 uint8_t Out_Gain = 5;
@@ -245,6 +261,33 @@ SGAUGE_t *SValGauge;
 SGAUGE_t *TXForwGauge;
 SGAUGE_t *TXBackwGauge;
 SGAUGE_t *SWRGauge;
+
+char Morsetext[21] = "123456              ";
+uint8_t InpPointer = 0;
+uint8_t OutpPointer = 0;
+char PunktStrich[201] = "";
+uint8_t PSinPointer = 0;
+uint8_t PSoutPointer = 0;
+uint8_t touched; // for CW keyer input
+char stopped = 1;
+char start = 0;
+char gestartet = 0; // CW- output has started
+                    // 0: before sending
+// 1: sending ./-
+// 2: pause between ./-
+char zeichen; // actual sent Dash/Dot/Pause CW element
+char TestSignOld, TestSign;
+char LastSign;
+char Morsechar;
+char countElements;
+char Testfield = '1';
+char zero = 0;
+char area, oldarea = 255;
+char DitLength = 5;
+char NewValue = 0;
+char NewText = 0;
+uint16_t posx = 80; // cw monitor position
+uint16_t posy = 42;
 
 int32_t S_max = 100;
 int32_t S_akt;
@@ -257,13 +300,31 @@ char S_Text[6] = "S9   ";
 int16_t count50 = 0; // for 10 ms
 SLABEL_t *label1, *label2, *label16, *label161, *label162, *label163, *label17,
     *label171, *label172, *label173, *label20, *label21, *label22, *label20a,
-    *label21a;
+    *label21a, *label182;
 uint32_t cntr = 0;
 uint16_t cntr2 = 0;
 uint8_t qspi1 = 8, qspi2 = 8,
         qspi3 = 8; // Init-,write-, read- status of Flash-ROM
 uint32_t messwf = 0;
 uint32_t messwb = 0;
+
+char RevCode[256];
+
+// Codetabelle Morsezeichen:
+static char codetab[60] = {
+    5,    0x18, 0x1a, 0x0c, 2,    0x12, 0x0e, 0x10, 4,    0x17, 0x0d, 0x14,
+    7,    6,    0x0f, 0x16, 0x1d, 0x0a, 8,    3,    9,    0x11, 0x0b, 0x19,
+    0x1b, 0x1c, 0x3f, 0x2f, 0x27, 0x23, 0x21, 0x20, 0x30, 0x38, 0x3c, 0x3e,
+    0x15, 0x1e, 0x13, 0x8c, 0x1f, 0x55, 0x73, 0x78, 0x6a, 0x4c, 0x61, 0x4d,
+    0x36, 0x6d, 0x5e, 0x31, 0x2a, 0x32, 0x5a, 0x35, 0x22, 0x45, 0x80, 0};
+// ASCII- Tabelle -falls nichts gefunden wurde: * ausgeben
+static char chartab[60] = {
+    'A',  'B',  'C',  'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L',
+    'M',  'N',  'O',  'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X',
+    'Y',  'Z',  '0',  '1', '2', '3', '4', '5', '6', '7', '8', '9',
+    0x8e, 0x99, 0x9a, 'S', 'C', '.', ',', ':', ';', '?', '-', '_',
+    '(',  ')',  0x27, '=', '+', '/', '@', 'K', 'V', 'S', 'i', '*'};
+
 char textf[10] = "  0000000";
 char textb[10] = "  0000000";
 char textc[10] = "  0000000";
@@ -276,6 +337,41 @@ char texte[10] = "  0000000";
 
 #include "stm32f7xx.h"
 #include "stm32f7xx_hal.h"
+
+void MakeRevMorseCode() { // fill the RevCode table
+  uint16_t i;
+  for (i = 0; i <= 255; i++) {
+    RevCode[i] = '*'; // unbekannte Zeichen: *
+  }
+  for (i = 0; i < 60; i++) {
+    RevCode[codetab[i]] = chartab[i];
+  }
+}
+
+char DecodeMorse() { // decoding 1 character/number
+  uint8_t i = 1, k;
+  char val;
+  do {
+    val = PunktStrich[PSoutPointer++];
+    if (PSoutPointer >= 200)
+      PSoutPointer = 0; // ringbuffer
+  } while (val == ' ');
+  if (val == '.')
+    i = 2;
+  else if (val == '-')
+    i = 3;
+  for (k = 7; k >= 1; k--) {
+    val = PunktStrich[PSoutPointer++];
+    if (PSoutPointer >= 200)
+      PSoutPointer = 0; // ringbuffer
+    if (val == ' ')
+      return RevCode[i];
+    i *= 2;
+    if (val == '-')
+      i++;
+  }
+  return RevCode[i];
+}
 
 void MX_GPIO_Init(void);
 
@@ -310,6 +406,7 @@ void MX_GPIO_Init(void) {
   /* GPIO Ports Clock Enable */
   __GPIOI_CLK_ENABLE();
   __GPIOG_CLK_ENABLE();
+  __GPIOA_CLK_ENABLE();
 
   /* Configure GPIO pin : PI *** PTT *** */
   GPIO_InitStruct.Pin = GPIO_PIN_2;
@@ -318,27 +415,29 @@ void MX_GPIO_Init(void) {
   GPIO_InitStruct.Speed = GPIO_SPEED_MEDIUM; // GPIO_SPEED_LOW;
   HAL_GPIO_Init(GPIOI, &GPIO_InitStruct);
   HAL_GPIO_WritePin(GPIOI, GPIO_PIN_2, 0); // Set Transmitter off **** new ****
-  /*Configure GPIO pin : PI2 *** PTT *** */
-  GPIO_InitStruct.Pin = GPIO_PIN_0;
+
+  /* Configure GPIO pin : PA1 *** CW Key *** */
+  GPIO_InitStruct.Pin = GPIO_PIN_15;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;        // GPIO_PULLDOWN;
   GPIO_InitStruct.Speed = GPIO_SPEED_MEDIUM; // GPIO_SPEED_LOW;
-  HAL_GPIO_Init(GPIOI, &GPIO_InitStruct);
-  HAL_GPIO_WritePin(GPIOI, GPIO_PIN_0, 0); // Set Pre PA off **** new ****
-  /*Configure GPIO pin : PI3 */
-  GPIO_InitStruct.Pin = GPIO_PIN_3;           //      Data PE4306
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, 1); // Set CW_key off **** new ****
+
+  /* Configure GPIO pin : PI3 */
+  GPIO_InitStruct.Pin = GPIO_PIN_3;           // Data PE4306
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD; // GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_MEDIUM; // GPIO_SPEED_LOW;
   HAL_GPIO_Init(GPIOI, &GPIO_InitStruct);
-  /*Configure GPIO pin : PG6 */
-  GPIO_InitStruct.Pin = GPIO_PIN_6;           //      Clock PE4306
+  /* Configure GPIO pin : PG6 */
+  GPIO_InitStruct.Pin = GPIO_PIN_6;           // Clock PE4306
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD; // GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_MEDIUM; // GPIO_SPEED_LOW;
   HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
-  /*Configure GPIO pin : PG7 */
-  GPIO_InitStruct.Pin = GPIO_PIN_7;           //       Latch Enable PE4306
+  /* Configure GPIO pin : PG7 */
+  GPIO_InitStruct.Pin = GPIO_PIN_7;           // Latch Enable PE4306
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_OD; // GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_MEDIUM; // GPIO_SPEED_LOW;
@@ -347,7 +446,6 @@ void MX_GPIO_Init(void) {
   HAL_GPIO_WritePin(GPIOG, GPIO_PIN_6, 0); // Clock=0
 
   UB_ADC1_SINGLE_Init(); // für Test Batteriespannung
-                         // *******************************************
   UB_ADC3_SINGLE_Init(); // Power measurement (forward / backward)
 }
 
@@ -451,7 +549,7 @@ void ShowSignalStrength(void) {
   maxcnt = maxcnt & 31;
   if (maxcnt == 1) {
 
-    SGUI_GaugeSetValue(SValGauge, (140 + S_Wert)); //  immediate reaction
+    SGUI_GaugeSetValue(SValGauge, (140 + S_Wert)); // immediate reaction
   }
   if (maxcnt == 15) {
     S = S_Wert; // -140 ... 13
@@ -501,13 +599,12 @@ void UB_TIMER2_ISR_CallBack(void) { // von TIM2 aufgerufen (Interrupt 5 kHz)
   }
   if (++count50 >= 50) {
     timer1++; // all 10 ms
+    timer2++; // for cw keyer
     count50 = 0;
   }
 }
 
-int main(
-    void) // ******************************************************************************************************************************************
-{         // *******************************************************************************************************************************************************
+int main() {
 
   uint8_t activeChild, FrqChg = 1, move;
   int8_t k, counter = 0;
@@ -527,11 +624,12 @@ int main(
                  39); // Frequenz 5 kHz - for LCD Backlight dimming and timer1
   UB_TIMER2_Start();
   qspi1 = UB_QFlash_Init();
-  UB_ADC1_SINGLE_Init(); // Test *******************************************
-  UB_ADC3_SINGLE_Init(); // Test *******************************************
+  UB_ADC1_SINGLE_Init(); // Test
+  UB_ADC3_SINGLE_Init(); // Test
   delay10ms(300);
   qspi3 = restoreall(); // restore data from Flash ROM
   FrequCharA[12] = FrequCharB[12] = FrequChar[12] = 0;
+
   // MeasureZeroPower();
   // alle Windows erzeugen
   create_MainWindow_01();
@@ -556,7 +654,7 @@ int main(
 
   btn_Select(true); // give data from Memory 1 to Red Pitaya
   SelBandMode = 0;
-
+  MakeRevMorseCode();
   while (1) {
     SGUI_Do(); // SGUI bearbeiten
     activeChild = SGUI_WindowGetActivNr();
@@ -613,15 +711,23 @@ int main(
           }
         } else {
           SGUI_ButtonSetAktiv(actBtn, false);
-          bFreqInput = 0; //  Eingabe beendet
+          bFreqInput = 0; // Eingabe beendet
         }
         break;
       default:
         SGUI_ButtonSetAktiv(actBtn, false);
-        bFreqInput = 0; //  Eingabe beendet
+        bFreqInput = 0; // Eingabe beendet
       }
       break;
     }
+
+    /*  pointer=UB_Uart_ReceiveUART6();
+     if(pointer != NULL)
+       //pointer=(char*) &TestArray[0];
+      if(pointer != oldpointer){
+         oldpointer=pointer;
+         if(pointer[0]== 2)
+            ShowFFT();*/
 
     case 16: { // Calibrate
       cntr++;
@@ -632,12 +738,10 @@ int main(
       }
       if (cntr >= 0xFFFFF) {
         cntr = 0;
-        sprintf(&writ3[0], "%5d",
-                (messw) / 256); // TEST ***********************************++
+        sprintf(&writ3[0], "%5d", (messw) / 256); // TEST
         SGUI_LabelSetText(label162, writ3);
         ZeroForw = (uint16_t)(messw / 256);
-        sprintf(&writ4[0], "%5d",
-                messwb / 256); // TEST ***********************************++
+        sprintf(&writ4[0], "%5d", messwb / 256); // TEST
         SGUI_LabelSetText(label163, writ3);
         ZeroBackw = (uint16_t)(messwb / 256);
         messw = messwb = 0;
@@ -779,6 +883,288 @@ int main(
 
       break;
     }
+    case 18: { // CW keyer
+      uint16_t x, y;
+      char text1[2] = {'1', 0};
+
+      if ((start >= 1) && (start < 3)) { // prerequisites:
+
+        UB_Graphic2D_DrawFullRectDMA(170, 80, 240, 120,
+                                     RGB_COL_RED); // Show CW dash- area
+        UB_Graphic2D_DrawFullRectDMA(288, 80, 4, 120, RGB_COL_GREY);
+        UB_Graphic2D_DrawFullRectDMA(170, 138, 240, 4, RGB_COL_GREY);
+        UB_Graphic2D_DrawFullCircleDMA(290, 140, 25, RGB_COL_GREY);
+        SGUI_TextSetDefFont(&Arial_13x19);
+        SGUI_TextSetCursor(180, 88);
+        SGUI_TextCreateString(".-");
+        SGUI_TextSetCursor(370, 88);
+        SGUI_TextCreateString("-.");
+        SGUI_TextSetCursor(180, 150);
+        SGUI_TextCreateString("..");
+        SGUI_TextSetCursor(370, 150);
+        SGUI_TextCreateString("--");
+        start++;
+      }
+
+      if (start > 2) {
+        start = 0;
+        TestSign = 1;
+        timer1 = 0;
+      }
+
+      x = SGUI.touch.xp;
+      y = SGUI.touch.yp;
+      area = 5;
+      if ((x >= 170) && (x <= 410) && (y >= 80) && (y <= 200)) { // active area
+        cntr++;
+        touched++;
+        if (touched < 4) {
+          UB_Graphic2D_DrawFullRectDMA(15, 160, 10, 10, RGB_COL_RED);
+          touched = 1;
+        }
+        if ((x - 290) * (x - 290) + (y - 140) * (y - 140) <
+            625) { // inner circle
+          // gliding area
+          area = 5; // nothing to do
+          if (oldarea == 5) {
+            if (timer1 - timera5 >= 3 * DitLength) {
+              if (LastSign != ' ')
+                SignInsert(' ');
+              stopped = 1;
+              countera1 = 0;
+              countera2 = 0;
+              countera3 = 0;
+              countera4 = 0;
+              countera5 = 0;
+              lock = 0;
+              if (TestSign != 1) {
+                NewText = 1;
+                TestSignOld = TestSign;
+                TestSign = 1;
+              }
+            }
+          } else {
+            timera5 = timer1;
+            paintArea();
+            oldarea = 5;
+          }
+        } else if (x >= 290) {
+          if (y < 140) {
+            area = 3;
+            if (countera3 < 5) {
+              if (oldarea == 3) {
+                timera3 = timer1 % (6 * DitLength);
+                if (lock == 0) {
+                  if (timera3 == 0) {
+                    SignInsert('-');
+                    lock = 1;
+                    TestSign = 2 * TestSign + 1;
+                  } else if (timera3 == 4 * DitLength) {
+                    SignInsert('.');
+                    lock = 1;
+                    TestSign = 2 * TestSign;
+                    countera3++;
+                  }
+                } else if ((timera3 == DitLength) || (timera3 == 5 * DitLength))
+                  lock = 0;
+              } else {
+                timer1 = 0;      // new area
+                SignInsert('-'); // immediately insert
+                lock = 1;
+                TestSign = 2 * TestSign + 1;
+                paintArea();
+                countera3 = 1;
+                oldarea = 3;
+              }
+            }
+          } else {
+            area = 4;
+            if (countera4 < 6) {
+              if (oldarea == 4) {
+                timera4 = timer1 % (4 * DitLength);
+                if (lock == 0) {
+                  if (timera4 == 0) {
+                    SignInsert('-');
+                    countera4++;
+                    lock = 1;
+                    TestSign = 2 * TestSign + 1;
+                  }
+                } else if (timera4 == DitLength)
+                  lock = 0;
+              } else {
+                timer1 = 0;      // new area
+                SignInsert('-'); // immediately insert
+                lock = 1;
+                TestSign = 2 * TestSign + 1;
+                paintArea();
+                countera4 = 1;
+                oldarea = 4;
+              }
+            }
+          }
+        } else {
+          if (y < 140) {
+            area = 2;
+            if (countera2 < 5) {
+              if (oldarea == 2) {
+                timera2 = timer1 % (6 * DitLength);
+                if (lock == 0) {
+                  if (timera2 == 0) {
+                    SignInsert('.');
+                    lock = 1;
+                    TestSign = 2 * TestSign;
+                  } else if (timera2 == 2 * DitLength) {
+                    SignInsert('-');
+                    lock = 1;
+                    TestSign = 2 * TestSign + 1;
+                    countera2++;
+                  }
+                } else if ((timera2 == DitLength) || (timera2 == 3 * DitLength))
+                  lock = 0;
+              } else {
+                timer1 = 0;      // new area
+                SignInsert('.'); // immediately insert
+                lock = 1;
+                TestSign = 2 * TestSign;
+                paintArea();
+                countera2 = 1;
+                oldarea = 2;
+              }
+            }
+          } else {
+            area = 1;
+            if (countera1 < 8) {
+              if (oldarea == 1) {
+                timera1 = timer1 % (2 * DitLength);
+                if (lock == 0) {
+                  if ((timera1 == 0) && (timer1 != 0)) {
+                    SignInsert('.');
+                    lock = 1;
+                    countera1++;
+                    TestSign = 2 * TestSign;
+                  }
+                } else if (timera1 == DitLength)
+                  lock = 0;
+              } else {
+                timer1 = 0;      // new area
+                SignInsert('.'); // immediately insert
+                TestSign = 2 * TestSign;
+                lock = 1;
+                paintArea();
+                countera1 = 1;
+                oldarea = 1;
+              }
+            }
+          }
+        }
+        stopped = 0;
+      } else { // ausserhalb oder abgehoben
+        if (stopped == 0) {
+          UB_Graphic2D_DrawFullRectDMA(15, 160, 10, 10, RGB_COL_GREY);
+          area = 5;
+
+          if (timer1 > DitLength) {
+            SignInsert(' ');
+            if (TestSign != 1) {
+              NewText = 1;
+              TestSignOld = TestSign;
+              TestSign = 1;
+            }
+            stopped = 1;
+            countera1 = 0;
+            countera2 = 0;
+            countera3 = 0;
+            countera4 = 0;
+            countera5 = 0;
+            lock = 0;
+            timer1 = 0;
+            paintArea();
+            oldarea = 5;
+          }
+          // touched=0;// ???
+        }
+      }
+
+      if (PSinPointer != PSoutPointer) {
+        if (gestartet == 0) {
+          timer2 = 0;
+          gestartet = 1;
+          zeichen = PunktStrich[PSoutPointer++];
+          if (PSoutPointer >= 200)
+            PSoutPointer = 0;
+          if ((zeichen == '.') || (zeichen == '-'))
+            MorseKey(true);
+        }
+      }
+      if (gestartet == 1) {
+        if (zeichen == '.') {
+          if (timer2 >= DitLength) {
+            MorseKey(false); // Dit Ende
+            timer2 = 0;
+            gestartet = 2;
+          }
+        } else if (zeichen == '-') {
+          if (timer2 >= 3 * DitLength) {
+            MorseKey(false); // Daa Ende
+            timer2 = 0;
+            gestartet = 2;
+          }
+        } else {
+          if (timer2 >= 3 * DitLength) { // pause
+            timer2 = 0;
+            gestartet = 0;
+          }
+        }
+      } else if (gestartet == 2) {
+        if (timer2 >= DitLength) {
+          timer2 = 0;
+          gestartet = 0;
+        }
+      }
+      if (stopped == 1) {
+        stopped++;
+        writ3[0] = ' ';
+        writ3[1] = ' ';
+        writ3[2] = ' ';
+        writ3[3] = 0;
+        SGUI_TextSetDefFont(&Arial_8x13);
+        SGUI_TextSetCursor(posx, posy);
+        SGUI_TextPrintString(&writ3[0]);
+        posx += 9;
+        if (posx > 466) {
+          posx = 80;
+          if (posy == 42)
+            posy = 58;
+          else
+            posy = 42;
+        }
+      }
+      if (NewText >= 1) {
+        writ3[0] = RevCode[TestSignOld];
+        writ3[1] = ' ';
+        writ3[2] = ' ';
+        writ3[3] = 0;
+        SGUI_TextSetDefFont(&Arial_8x13);
+        SGUI_TextSetCursor(posx, posy);
+        SGUI_TextPrintString(&writ3[0]);
+        posx += 9;
+        if (posx > 466) {
+          posx = 80;
+          if (posy == 42)
+            posy = 58;
+          else
+            posy = 42;
+        }
+        NewText = 0;
+      }
+
+      if (NewValue == 1) {
+        sprintf(&writ3[0], "%5d", KeyerSpeed); //
+        SGUI_LabelSetText(label182, writ3);
+        NewValue = 0;
+      }
+      break;
+    }
     case 20: { // TX menu
       CalculatePower();
       break;
@@ -787,6 +1173,53 @@ int main(
 
       cntr2++;
     }
+  }
+}
+
+void paintArea() {
+  switch (oldarea) {
+  case 1: {
+    UB_Graphic2D_DrawFullRectDMA(35, 180, 10, 10, RGB_COL_GREY);
+    break;
+  }
+  case 2: {
+    UB_Graphic2D_DrawFullRectDMA(35, 160, 10, 10, RGB_COL_GREY);
+    break;
+  }
+  case 3: {
+    UB_Graphic2D_DrawFullRectDMA(55, 160, 10, 10, RGB_COL_GREY);
+    break;
+  }
+  case 4: {
+    UB_Graphic2D_DrawFullRectDMA(55, 180, 10, 10, RGB_COL_GREY);
+    break;
+  }
+  case 5: {
+    UB_Graphic2D_DrawFullRectDMA(45, 170, 10, 10, RGB_COL_GREY);
+    break;
+  }
+  }
+  switch (area) {
+  case 1: {
+    UB_Graphic2D_DrawFullRectDMA(35, 180, 10, 10, RGB_COL_RED);
+    break;
+  }
+  case 2: {
+    UB_Graphic2D_DrawFullRectDMA(35, 160, 10, 10, RGB_COL_RED);
+    break;
+  }
+  case 3: {
+    UB_Graphic2D_DrawFullRectDMA(55, 160, 10, 10, RGB_COL_RED);
+    break;
+  }
+  case 4: {
+    UB_Graphic2D_DrawFullRectDMA(55, 180, 10, 10, RGB_COL_RED);
+    break;
+  }
+  case 5: {
+    UB_Graphic2D_DrawFullRectDMA(45, 170, 10, 10, RGB_COL_RED);
+    break;
+  }
   }
 }
 
@@ -805,8 +1238,8 @@ void btn_fkt(bool aktiv) {
 void Brightness(void) { StopCount = SGUI_SliderGetValue(bright); }
 
 void MicVol(void) {
-  MicVolumSet =
-      SGUI_SliderGetValue(mic); // Send microphone volume control to Red Pitaya
+  MicVolumSet = SGUI_SliderGetValue(
+      mic); // ((Send microphone volume control to Red Pitaya))
   UB_Uart_SendByte(COM6, 4);
   UB_Uart_SendByte(COM6, MicVolumSet);
   UB_Uart_SendByte(COM6, 0);
@@ -816,8 +1249,8 @@ void MicVol(void) {
 }
 
 void Volume(void) {
-  VolumSet =
-      SGUI_SliderGetValue(volume); // Send speaker volume control to Red Pitaya
+  VolumSet = SGUI_SliderGetValue(
+      volume); // ((Send speaker volume control to Red Pitaya))
   UB_Uart_SendByte(COM6, 3);
   UB_Uart_SendByte(COM6, VolumSet);
   UB_Uart_SendByte(COM6, 0);
@@ -833,7 +1266,8 @@ void ModeSelectRdy(uint16_t zeile) { // Listbox Mode
   SGUI_ButtonSetText(btn11, ModeTxt);
   nr1 = nr = (uint8_t)SGUI_ListboxGetAktivItemNr(lb1);
   if (nr == 2)
-    nr1 = 3; // Bug correction (workaround)
+    nr1 = 3; // ++++++++++++++++++++++++++++++++++++++ Bug correction
+             // (workaround) ************************
   else if (nr == 3)
     nr1 = 2;                 // (exchange LSB <> USB)
   UB_Uart_SendByte(COM6, 6); // Send Mode control to Red Pitaya
@@ -891,35 +1325,41 @@ void BWSelect(bool aktiv) { // Button BW
 void CW_Keyer(bool aktiv) {
   uint8_t xnr;
   if (aktiv == true) {
-    // qspi2=storeall();
-    // delay10ms(100);
-    // qspi3=restoreall();
-    OutPE4306(gain[AttPtr]); // Set Attenuator
-    MicGainSaved = MicVolumSet;
-    UB_Uart_SendByte(COM6, 4); // Mic Volume
-    UB_Uart_SendByte(COM6, 0); // set to 0
-    UB_Uart_SendByte(COM6, 0);
-    UB_Uart_SendByte(COM6, 0);
-    UB_Uart_SendByte(COM6, 0);
-    UB_Uart_SendByte(COM6, 0); // instead of CRC8
 
-    UB_Uart_SendByte(COM6, 6); // Set Mode
-    UB_Uart_SendByte(COM6, 4); // Mode AM
+    OutPE4306(gain[AttPtr]); // Set Attenuator
+
+    UB_Uart_SendByte(COM6, 6);          // Set Mode
+    UB_Uart_SendByte(COM6, ModeNr & 1); // Mode CWL/CWU
     UB_Uart_SendByte(COM6, 0);
     UB_Uart_SendByte(COM6, 0);
     UB_Uart_SendByte(COM6, 0);
-    UB_Uart_SendByte(COM6, 0);               //    instead of CRC8
-    HAL_GPIO_WritePin(GPIOI, GPIO_PIN_0, 0); // Set Pre PA off
+    UB_Uart_SendByte(COM6, 0);               // instead of CRC8
     HAL_GPIO_WritePin(GPIOI, GPIO_PIN_2, 1); // Set RX/TX switch to TX on
     UB_Uart_SendByte(COM6, 8);               // Set TX On  Bit
     UB_Uart_SendByte(COM6, 1);
     UB_Uart_SendByte(COM6, 0);
     UB_Uart_SendByte(COM6, 0);
     UB_Uart_SendByte(COM6, 0);
-    UB_Uart_SendByte(COM6, 0); //    instead of CRC8
+    UB_Uart_SendByte(COM6, 0); // instead of CRC8
 
+    start = 1;
+    posx = 80; // monitor position
+    posy = 42;
+    lock = 0;
+    countera1 = 0;
+    countera2 = 0;
+    countera3 = 0;
+    countera4 = 0;
+    countera5 = 0;
+    InpPointer = 0;
+    OutpPointer = 0;
+    PSinPointer = 0;
+    PSoutPointer = 0;
+    timer1 = 0;
+    timer2 = 0;
+    stopped = 1;
+    touched = 0;
     SGUI_WindowShow(18); //
-
   } else {
     HAL_GPIO_WritePin(GPIOI, GPIO_PIN_2, 0); // Set Transmitter off
 
@@ -928,28 +1368,9 @@ void CW_Keyer(bool aktiv) {
     UB_Uart_SendByte(COM6, 0);
     UB_Uart_SendByte(COM6, 0);
     UB_Uart_SendByte(COM6, 0);
-    UB_Uart_SendByte(COM6, 0); //    instead of CRC8
-
-    UB_Uart_SendByte(COM6, 4);            // Mic Volume
-    UB_Uart_SendByte(COM6, MicGainSaved); // restore Mic Volume
-    UB_Uart_SendByte(COM6, 0);
-    UB_Uart_SendByte(COM6, 0);
-    UB_Uart_SendByte(COM6, 0);
     UB_Uart_SendByte(COM6, 0); // instead of CRC8
-
-    UB_Uart_SendByte(COM6, 6); // Set Mode
-    xnr = ModeNr;              // repair the bug
-    if (xnr == 2)
-      xnr = 3;
-    else if (xnr == 3)
-      xnr = 2;
-    UB_Uart_SendByte(COM6, xnr);
-    UB_Uart_SendByte(COM6, 0);
-    UB_Uart_SendByte(COM6, 0);
-    UB_Uart_SendByte(COM6, 0);
-    UB_Uart_SendByte(COM6, 0); //    instead of CRC8
-
     OutPE4306(AttenValRX);
+    start = 0;
     SGUI_WindowShow(1); // main-window anzeigen
   }
 }
@@ -957,7 +1378,7 @@ void CW_Keyer(bool aktiv) {
 void BWSelectRdy(uint16_t zeile) {
 
   BWNr = zeile;
-  if (ModeNr <= 1) { //  CW
+  if (ModeNr <= 1) { // CW
     BWTxt = SGUI_ListboxGetItem(lb12, zeile);
     BWNr = (uint8_t)SGUI_ListboxGetAktivItemNr(lb12);
     ActBW = BWCWValue[9 - BWNr];
@@ -976,7 +1397,7 @@ void BWSelectRdy(uint16_t zeile) {
   UB_Uart_SendByte(COM6, 0);
   UB_Uart_SendByte(COM6, 0);
   UB_Uart_SendByte(COM6, 0);
-  UB_Uart_SendByte(COM6, 0); //    instead of CRC8
+  UB_Uart_SendByte(COM6, 0); // instead of CRC8
 }
 
 void AGCSelect(bool aktiv) {
@@ -997,9 +1418,8 @@ void AGCSelectRdy(uint16_t zeile) { // for future extensions
   AGCtxt = SGUI_ListboxGetItem(lb13, zeile);
   SGUI_ButtonSetText(btn13, AGCtxt);
   nr = (uint8_t)SGUI_ListboxGetAktivItemNr(lb13);
-  txt[1] = nr + 48; //                + "0"
-  // UB_Uart_SendString(COM6,&txt[0],LF);//        Send AGC control to Red
-  // Pitaya
+  txt[1] = nr + 48; // + "0"
+  // UB_Uart_SendString(COM6,&txt[0],LF); // Send AGC control to Red Pitaya
 }
 
 void PreampRdy() {            // for future improvements
@@ -1014,7 +1434,7 @@ void PreampRdy() {            // for future improvements
   UB_Uart_SendByte(COM6, 0);
   UB_Uart_SendByte(COM6, 0);
   UB_Uart_SendByte(COM6, 0);
-  UB_Uart_SendByte(COM6, 0); //    instead of CRC8
+  UB_Uart_SendByte(COM6, 0); // instead of CRC8
 }
 
 void Settings(bool aktiv) {
@@ -1082,12 +1502,12 @@ void SendFreq() {
     for (i = 0; i < 4; i++) {
       UB_Uart_SendByte(COM6, unionA.frequencyAChar[i]);
     }
-    UB_Uart_SendByte(COM6, 0); //    instead of CRC8
+    UB_Uart_SendByte(COM6, 0); // instead of CRC8
     UB_Uart_SendByte(COM6, 2); // Send frequency control to Red Pitaya
     for (i = 0; i < 4; i++) {
       UB_Uart_SendByte(COM6, unionA.frequencyAChar[i]);
     }
-    UB_Uart_SendByte(COM6, 0); //    instead of CRC8
+    UB_Uart_SendByte(COM6, 0); // instead of CRC8
   }
 
   else {                       // RXfrequ=FrequA   TXfreq=FreqB
@@ -1095,14 +1515,24 @@ void SendFreq() {
     for (i = 0; i < 4; i++) {
       UB_Uart_SendByte(COM6, unionA.frequencyAChar[i]);
     }
-    UB_Uart_SendByte(COM6, 0);                //    instead of CRC8
+    UB_Uart_SendByte(COM6, 0);                // instead of CRC8
     unionB.frequencyB = MakeFreq(FrequCharB); // make frequency B as integer
     UB_Uart_SendByte(COM6, 2); // Send frequency control to Red Pitaya
     for (i = 0; i < 4; i++) {
       UB_Uart_SendByte(COM6, unionB.frequencyBChar[i]);
     }
-    UB_Uart_SendByte(COM6, 0); //    instead of CRC8
+    UB_Uart_SendByte(COM6, 0); // instead of CRC8
   }
+}
+
+void SignInsert(char Sign) { // for CW keyer
+
+  // timer1=0;// timer new start
+
+  PunktStrich[PSinPointer++] = Sign;
+
+  if (PSinPointer >= 200)
+    PSinPointer = 0; // ring memory
 }
 
 void SetFreq(char *targ) {
@@ -1237,22 +1667,24 @@ void Tune(bool aktiv) { // +++++ Tune command to Red Pitaya +++++
   uint8_t gaintun, xnr;
   if (aktiv == true) {
     tune = 1;
-    gaintun = gain[AttPtr] + 12; // 12 dB under normal
+    gaintun = gain[AttPtr] + 10; // 10 dB under normal
     if (gaintun > 31)
       gaintun = 31;
     OutPE4306(gaintun); // Set Attenuator
     // ModeSaved=(uint8_t)SGUI_ListboxGetAktivItemNr(lb1);//save actual mode
     MeasureZeroPower();
-    MicGainSaved = MicVolumSet;
-    UB_Uart_SendByte(COM6, 4); // Mic Volume
-    UB_Uart_SendByte(COM6, 0); // set to 0
-    UB_Uart_SendByte(COM6, 0);
-    UB_Uart_SendByte(COM6, 0);
-    UB_Uart_SendByte(COM6, 0);
-    UB_Uart_SendByte(COM6, 0); // instead of CRC8
+
+    /*MicGainSaved=MicVolumSet;
+    UB_Uart_SendByte(COM6,4);// Mic Volume
+    UB_Uart_SendByte(COM6,0);// set to 0
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0);
+    UB_Uart_SendByte(COM6,0); // instead of CRC8 */
 
     UB_Uart_SendByte(COM6, 6); // Set Mode
-    UB_Uart_SendByte(COM6, 4); // Mode AM
+    // UB_Uart_SendByte(COM6,4);//Mode AM
+    UB_Uart_SendByte(COM6, 0); // Mode CWL
     UB_Uart_SendByte(COM6, 0);
     UB_Uart_SendByte(COM6, 0);
     UB_Uart_SendByte(COM6, 0);
@@ -1263,9 +1695,9 @@ void Tune(bool aktiv) { // +++++ Tune command to Red Pitaya +++++
     UB_Uart_SendByte(COM6, 0);
     UB_Uart_SendByte(COM6, 0);
     UB_Uart_SendByte(COM6, 0);
-    UB_Uart_SendByte(COM6, 0);               // instead of CRC8
-    HAL_GPIO_WritePin(GPIOI, GPIO_PIN_2, 1); // Set Transmitter on
-    HAL_GPIO_WritePin(GPIOI, GPIO_PIN_0, 1); // Set Pre-PA on
+    UB_Uart_SendByte(COM6, 0);                // instead of CRC8
+    HAL_GPIO_WritePin(GPIOI, GPIO_PIN_2, 1);  // Set Transmitter on
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, 0); // Set CW-Key pressed
     SGUI_WindowShow(20);
     delay10ms(50);
   }
@@ -1280,20 +1712,19 @@ void PTT(bool aktiv) { // +++++ PTT to Red Pitaya +++++
     HAL_GPIO_WritePin(GPIOI, GPIO_PIN_2,
                       1); // data bit;// Set Transmitter on *** new ***
     OutPE4306(gain[AttPtr]);
-    HAL_GPIO_WritePin(GPIOI, GPIO_PIN_0, 1); // Set Pre-PA on
-    Mute(true);                              // cancel receiver tone
-    UB_Uart_SendByte(COM6, 8);               // Set PTT Bit
+    Mute(true);                // cancel receiver tone
+    UB_Uart_SendByte(COM6, 8); // Set PTT Bit
     UB_Uart_SendByte(COM6, 1);
     UB_Uart_SendByte(COM6, 0);
     UB_Uart_SendByte(COM6, 0);
     UB_Uart_SendByte(COM6, 0);
-    UB_Uart_SendByte(COM6, 0); //    instead of CRC8
+    UB_Uart_SendByte(COM6, 0); // instead of CRC8
     delay10ms(20);
     SGUI_WindowShow(20);
   }
   // else{
-  //   delay10ms(50);
-  // }
+  //    delay10ms(50);
+  //  }
 }
 
 void Mute(bool aktiv) { // +++++ PTT to Red Pitaya +++++
@@ -1303,14 +1734,14 @@ void Mute(bool aktiv) { // +++++ PTT to Red Pitaya +++++
     UB_Uart_SendByte(COM6, 0);
     UB_Uart_SendByte(COM6, 0);
     UB_Uart_SendByte(COM6, 0);
-    UB_Uart_SendByte(COM6, 0); //    instead of CRC8
+    UB_Uart_SendByte(COM6, 0); // instead of CRC8
   } else {
     UB_Uart_SendByte(COM6, 3); // Set Volume to old value
     UB_Uart_SendByte(COM6, VolumSet);
     UB_Uart_SendByte(COM6, 0);
     UB_Uart_SendByte(COM6, 0);
     UB_Uart_SendByte(COM6, 0);
-    UB_Uart_SendByte(COM6, 0); //    instead of CRC8
+    UB_Uart_SendByte(COM6, 0); // instead of CRC8
   }
 }
 void BandMemSet(bool aktiv) { // +++++
@@ -1349,7 +1780,7 @@ void Sweep(bool aktiv) { // +++++
       for (j = 0; j < 4; j++) {
         UB_Uart_SendByte(COM6, unionA.frequencyAChar[j]);
       }
-      UB_Uart_SendByte(COM6, 0); //    instead of CRC8
+      UB_Uart_SendByte(COM6, 0); // instead of CRC8
       S_Val = 0;
       delay10ms(8); // wait 100 ms
       j = 0;
@@ -1549,6 +1980,99 @@ int16_t CalcAngle(int16_t x, int16_t y) { // returns angle
   return alfa;
 }
 
+/*void ShowVFOKnob(uint8_t light){
+uint8_t i,j,k,n;
+uint16_t c,r1,r2;
+float xp,yp;
+
+        if(light==0){
+                SGUI_ScreenDrawFullCircle(xm, ym, 130, RGB_COL_GREEN);
+                SGUI_ScreenDrawFullCircle(xm, ym, 110, RGB_COL_GREY);
+                SGUI_ScreenDrawFullCircle(xm, ym, 90, RGB_COL_GREEN);
+                SGUI_ScreenDrawFullCircle(xm, ym, 70, RGB_COL_GREY);
+                SGUI_ScreenDrawFullCircle(xm, ym, 50, RGB_COL_GREEN);
+        }
+        else if(light==1){
+                SGUI_ScreenDrawFullCircle(xm, ym, 130, RGB_COL_YELLOW);
+                SGUI_ScreenDrawFullCircle(xm, ym, 110, RGB_COL_GREY);
+                SGUI_ScreenDrawFullCircle(xm, ym, 90, RGB_COL_GREEN);
+                SGUI_ScreenDrawFullCircle(xm, ym, 70, RGB_COL_GREY);
+                SGUI_ScreenDrawFullCircle(xm, ym, 50, RGB_COL_GREEN);
+        }
+        else if(light==2){
+                SGUI_ScreenDrawFullCircle(xm, ym, 130, RGB_COL_GREEN);
+                SGUI_ScreenDrawFullCircle(xm, ym, 110, RGB_COL_GREY);
+                SGUI_ScreenDrawFullCircle(xm, ym, 90, RGB_COL_YELLOW);
+                SGUI_ScreenDrawFullCircle(xm, ym, 70, RGB_COL_GREY);
+                SGUI_ScreenDrawFullCircle(xm, ym, 50, RGB_COL_GREEN);
+        }
+        else{
+                SGUI_ScreenDrawFullCircle(xm, ym, 130, RGB_COL_GREEN);
+                SGUI_ScreenDrawFullCircle(xm, ym, 110, RGB_COL_GREY);
+                SGUI_ScreenDrawFullCircle(xm, ym, 90, RGB_COL_GREEN);
+                SGUI_ScreenDrawFullCircle(xm, ym, 70, RGB_COL_GREY);
+                SGUI_ScreenDrawFullCircle(xm, ym, 50, RGB_COL_YELLOW);
+
+        }
+        SGUI_ScreenDrawFullCircle(xm, ym, 30, RGB_COL_GREY);
+        SGUI_ScreenDrawFullCircle(xm, ym, 10, RGB_COL_RED);
+        for(n=0;n<9;n++)  {
+                xp=cos(pi*n/16);
+                yp=sin(pi*n/16);
+                r1=110;r2=130;
+                SGUI_ScreenDrawLine(xm+xp*r1, ym+yp*r1, xm+xp*r2, ym+yp*r2,
+RGB_COL_BLACK);
+                SGUI_ScreenDrawLine(xm+xp*r1, ym-yp*r1, xm+xp*r2, ym-yp*r2,
+RGB_COL_BLACK);
+                SGUI_ScreenDrawLine(xm-xp*r1, ym-yp*r1, xm-xp*r2, ym-yp*r2,
+RGB_COL_BLACK);
+                SGUI_ScreenDrawLine(xm-xp*r1, ym+yp*r1, xm-xp*r2, ym+yp*r2,
+RGB_COL_BLACK);
+                SGUI_ScreenDrawLine(xm+yp*r1, ym+xp*r1, xm+yp*r2, ym+xp*r2,
+RGB_COL_BLACK);
+                SGUI_ScreenDrawLine(xm+yp*r1, ym-xp*r1, xm+yp*r2, ym-xp*r2,
+RGB_COL_BLACK);
+                SGUI_ScreenDrawLine(xm-yp*r1, ym-xp*r1, xm-yp*r2, ym-xp*r2,
+RGB_COL_BLACK);
+                SGUI_ScreenDrawLine(xm-yp*r1, ym+xp*r1, xm-yp*r2, ym+xp*r2,
+RGB_COL_BLACK);
+                r1=70; r2=90;
+                SGUI_ScreenDrawLine(xm+xp*r1, ym+yp*r1, xm+xp*r2, ym+yp*r2,
+RGB_COL_BLACK);
+                SGUI_ScreenDrawLine(xm+xp*r1, ym-yp*r1, xm+xp*r2, ym-yp*r2,
+RGB_COL_BLACK);
+                SGUI_ScreenDrawLine(xm-xp*r1, ym-yp*r1, xm-xp*r2, ym-yp*r2,
+RGB_COL_BLACK);
+                SGUI_ScreenDrawLine(xm-xp*r1, ym+yp*r1, xm-xp*r2, ym+yp*r2,
+RGB_COL_BLACK);
+                SGUI_ScreenDrawLine(xm+yp*r1, ym+xp*r1, xm+yp*r2, ym+xp*r2,
+RGB_COL_BLACK);
+                SGUI_ScreenDrawLine(xm+yp*r1, ym-xp*r1, xm+yp*r2, ym-xp*r2,
+RGB_COL_BLACK);
+                SGUI_ScreenDrawLine(xm-yp*r1, ym-xp*r1, xm-yp*r2, ym-xp*r2,
+RGB_COL_BLACK);
+                SGUI_ScreenDrawLine(xm-yp*r1, ym+xp*r1, xm-yp*r2, ym+xp*r2,
+RGB_COL_BLACK);
+                r1=30; r2=50;
+                SGUI_ScreenDrawLine(xm+xp*r1, ym+yp*r1, xm+xp*r2, ym+yp*r2,
+RGB_COL_BLACK);
+                SGUI_ScreenDrawLine(xm+xp*r1, ym-yp*r1, xm+xp*r2, ym-yp*r2,
+RGB_COL_BLACK);
+                SGUI_ScreenDrawLine(xm-xp*r1, ym-yp*r1, xm-xp*r2, ym-yp*r2,
+RGB_COL_BLACK);
+                SGUI_ScreenDrawLine(xm-xp*r1, ym+yp*r1, xm-xp*r2, ym+yp*r2,
+RGB_COL_BLACK);
+                SGUI_ScreenDrawLine(xm+yp*r1, ym+xp*r1, xm+yp*r2, ym+xp*r2,
+RGB_COL_BLACK);
+                SGUI_ScreenDrawLine(xm+yp*r1, ym-xp*r1, xm+yp*r2, ym-xp*r2,
+RGB_COL_BLACK);
+                SGUI_ScreenDrawLine(xm-yp*r1, ym-xp*r1, xm-yp*r2, ym-xp*r2,
+RGB_COL_BLACK);
+                SGUI_ScreenDrawLine(xm-yp*r1, ym+xp*r1, xm-yp*r2, ym+xp*r2,
+RGB_COL_BLACK);
+        }
+}
+*/
 int16_t CalcAngle2(int16_t x, int16_t y) { // returns angle
 
   int16_t xc, yc;
@@ -1563,7 +2087,7 @@ int16_t CalcAngle2(int16_t x, int16_t y) { // returns angle
   // calculate quadrant
   if (x >= xm) {
     if (y <= ym)
-      q = 1; //  1. Quadrant
+      q = 1; // 1. Quadrant
     else
       q = 2; // 2. Quadrant
   } else {
@@ -1673,7 +2197,7 @@ void(Frequency(bool aktiv)) { // VFO
   }
 }
 
-// M A I N   W I N D O W
+// M A I N   W I N D O W *******************************
 void create_MainWindow_01(void) {
   SBUTTON_t *btn0, *btn2, *btn4, *btn5, *btn5a, *btn6, *btn7, *btn8, *btnA,
       *btnB, *btnC; // , *btn3
@@ -1685,6 +2209,7 @@ void create_MainWindow_01(void) {
   SGUI_ButtonSetText(btn0, "PTT");
   // SGUI_ButtonSetMode(btn0,SBUTTON_PUSHPULL);
   SGUI_ButtonSetHandler(btn0, PTT);
+  // HAL_GPIO_WritePin(GPIOB, GPIO_PIN_8, 0);// Set Pre PA off **** new ****
 
   btn2 = SGUI_ButtonCreate(310, 212, 80, 60); // button
   SGUI_ButtonSetFont(btn2, &Arial_16x25);
@@ -1808,7 +2333,7 @@ void create_MainWindow_01(void) {
   SGUI_ButtonSetHandler(btn151, BtnCalibrate);
 }
 
-// Mode selection
+// Mode selection ---------------------------------------------------
 void create_ChildWindow_11(void) {
   char i;
 
@@ -2276,7 +2801,8 @@ void fkt09(bool aktiv) {
   }
 }
 
-// frequency input
+//----------------------------------------------------------------------------------------
+// frequency input ----------------------------------------
 void create_ChildWindow_14(void) { // Frequenzeingabe
 
   SBUTTON_t *bt00, *bt01, *bt02, *bt03, *bt04, *bt05, *bt06, *bt07, *bt08,
@@ -2481,7 +3007,7 @@ void Exit2(bool aktiv) {
     UB_Uart_SendByte(COM6, 0);
     UB_Uart_SendByte(COM6, 0);
     UB_Uart_SendByte(COM6, 1);
-    UB_Uart_SendByte(COM6, 0); //    instead of CRC8
+    UB_Uart_SendByte(COM6, 0); // instead of CRC8
   }
 }
 
@@ -2494,7 +3020,7 @@ void Exit(bool aktiv) {
 
 void Sweep1Rdy(uint16_t zeile) { // set sweep step
   stepline = zeile;
-  step = BWVSwp[zeile]; //      caller: Sweep BW lb151
+  step = BWVSwp[zeile]; // caller: Sweep BW lb151
   ModeSwpNr = ModeSwp[zeile];
   BWNrSweep = BWNrSwp[zeile];
 }
@@ -2710,7 +3236,8 @@ void create_ChildWindow_151(void) {
   SGUI_ButtonSetHandler(btn, btn_fkt);
 }
 
-// Settings
+//----------------------------------------------------------------------------------------------------
+// Settings ---------***************************
 void create_ChildWindow_15(void) {
   char i;
 
@@ -2851,10 +3378,12 @@ void create_ChildWindow_16(void) {
 void MorseKey(bool aktiv) {
   if (aktiv == true) {
 
-    HAL_GPIO_WritePin(GPIOI, GPIO_PIN_0, 1); // Set Pre-PA on **** new ****
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15,
+                      0); // Set CW key pressed **** new ****
 
   } else {
-    HAL_GPIO_WritePin(GPIOI, GPIO_PIN_0, 0); // Set Pre-PA off **** new ****
+    HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15,
+                      1); // Set CW key released **** new ****
   }
 }
 
@@ -2921,23 +3450,82 @@ void create_ChildWindow_17(void) {
   SGUI_ButtonSetHandler(btn, btn_fkt);
 }
 
+void SendSidetonvalue() {
+  UB_Uart_SendByte(COM6, 3);
+  UB_Uart_SendByte(COM6, SidetoneValueCW);
+  UB_Uart_SendByte(COM6, 0);
+  UB_Uart_SendByte(COM6, 0);
+  UB_Uart_SendByte(COM6, 0);
+  UB_Uart_SendByte(COM6, 0); // instead of CRC8
+}
+
+void SetSidetoneValue(void) { // Set Sidetone value
+
+  SidetoneValueCW =
+      9 - SGUI_SliderGetValue(
+              SidetoneValue); // ((Send speaker volume control to Red Pitaya))
+  SendSidetonvalue();
+}
+
+void SetKeyerspeed(void) { // Set Keyer speed
+
+  KeyerSpeed = SGUI_SliderGetValue(SLKeyerspeed); //
+  DitLength = 600 / KeyerSpeed;
+  NewValue = 1; // Anzeige erfolgt in der Hauptschleife
+}
+
+void CW_Menue2() {}
+
 void create_ChildWindow_18(
     void) { // +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++ CW
             // Keyer ++++++++++++++++++++++++++++++++++++++++++++++
-  char text[8] = {"......."};
 
-  ptr18 = SGUI_WindowCreateChild(18, 0, 10, 400, 260); // Child-Window (Nr=18)
-  SGUI_WindowSetColor(ptr18, RGB_COL_BLACK, 0x076CE);
-  SGUI_TextSetCursor(10, 4);
-  SGUI_TextCreateString("CW- Keyer");           // Beschriftung
-  cwbtn = SGUI_ButtonCreate(120, 112, 120, 60); // button
+  NewText = 1;
+  // strncpy(&Morsetext[0],'NEUER TEXT                    ',30);
+  Morsetext[30] = 0;
+  ptr18 = SGUI_WindowCreateChild(18, 0, 0, 480, 272); // Child-Window (Nr=18)
+  SGUI_WindowSetColor(ptr18, RGB_COL_BLACK, 0x076CE); //"CW- Keyer"
+  cwbtn = SGUI_ButtonCreate(15, 80, 120, 60);         // button
   SGUI_ButtonSetFont(cwbtn, &Arial_16x25);
   SGUI_ButtonSetColor(cwbtn, RGB_COL_GREEN, RGB_COL_RED);
   SGUI_ButtonSetText(cwbtn, "Key");
   SGUI_ButtonSetMode(cwbtn, SBUTTON_PUSH);
   SGUI_ButtonSetHandler(cwbtn, MorseKey);
 
-  btn = SGUI_ButtonCreate(140, 4, 50, 50); // ok-button
+  cwbtn2 = SGUI_ButtonCreate(80, 10, 160, 30); // button
+  SGUI_ButtonSetFont(cwbtn2, &Arial_10x15);
+  SGUI_ButtonSetColor(cwbtn2, RGB_COL_GREEN, RGB_COL_RED);
+  SGUI_ButtonSetText(cwbtn2, "CQ.. automatic");
+  SGUI_ButtonSetMode(cwbtn2, SBUTTON_PUSH);
+  SGUI_ButtonSetHandler(cwbtn2, CW_Menue2);
+
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, 1); // Set CW key released **** new ****
+  SGUI_TextSetCursor(290, 10);
+  SGUI_TextCreateString("Sidetone Volume"); // Beschriftung
+
+  SidetoneValue = SGUI_SliderCreate(442, 80, 25, 180); // SidetoneValue
+  SGUI_SliderSetTyp(SidetoneValue, SSLIDER_V);
+  SGUI_SliderSetColor(SidetoneValue, RGB_COL_GREY, RGB_COL_BLUE);
+  SGUI_SliderSetMinMax(SidetoneValue, 0, 9);
+  SGUI_SliderSetStep(SidetoneValue, 1);
+  SGUI_SliderSetValue(SidetoneValue, SidetoneValueCW);
+  SGUI_SliderSetHandler(SidetoneValue, SetSidetoneValue);
+  SendSidetonvalue();
+
+  label182 = SGUI_LabelCreate(210, 208, 60, 22); //
+  SGUI_LabelSetStyle(label182, STYLE_FLAT);
+  SGUI_LabelSetText(label182, "80");
+  SGUI_TextSetCursor(10, 209);
+  SGUI_TextCreateString("Keyer speed (Bpm)"); // Beschriftung
+
+  SLKeyerspeed = SGUI_SliderCreate(10, 235, 400, 30); // AttenuatorValue
+  SGUI_SliderSetColor(SLKeyerspeed, RGB_COL_GREY, RGB_COL_BLUE);
+  SGUI_SliderSetMinMax(SLKeyerspeed, 10, 200);
+  SGUI_SliderSetStep(SLKeyerspeed, 5);
+  SGUI_SliderSetValue(SLKeyerspeed, 80);
+  SGUI_SliderSetHandler(SLKeyerspeed, SetKeyerspeed);
+  DitLength = 7;                           // 50 ms
+  btn = SGUI_ButtonCreate(15, 10, 60, 60); // ok-button
   SGUI_ButtonSetText(btn, "OK");
   SGUI_ButtonSetHandler(btn, btn_fkt);
 }
@@ -3053,7 +3641,7 @@ void btn_Select(bool aktiv) {
     }
     ModeNr = help = zeile;
     if (help == 2)
-      help = 3; //    ******* workaround a bug ******
+      help = 3; // ******* workaround a bug ******
     else if (help == 3)
       help = 2;
     SGUI_ListboxSetAktivItemNr(lb1, zeile);
@@ -3093,7 +3681,7 @@ void btn_Select(bool aktiv) {
     UB_Uart_SendByte(COM6, 0);
     UB_Uart_SendByte(COM6, 0);
     UB_Uart_SendByte(COM6, 0);
-    UB_Uart_SendByte(COM6, 0); //    instead of CRC8
+    UB_Uart_SendByte(COM6, 0); // instead of CRC8
     // SGUI_ListboxSetAktivItemNr(lb,-1); // disable all items
     SGUI_WindowShow(1); // main-window anzeigen
     oldpointer = NULL;
@@ -3307,21 +3895,20 @@ void create_ChildWindow_19(void) { // Menue Band/Memory
 void btn_PTT_End(bool aktiv) {
   uint8_t xnr;
   delay10ms(50);
-  UB_Uart_SendByte(COM6, 8); //  Reset TX On Bit
+  UB_Uart_SendByte(COM6, 8); // Reset TX On Bit
   UB_Uart_SendByte(COM6, 0);
   UB_Uart_SendByte(COM6, 0);
   UB_Uart_SendByte(COM6, 0);
   UB_Uart_SendByte(COM6, 0);
-  UB_Uart_SendByte(COM6, 0); //    instead of CRC8
+  UB_Uart_SendByte(COM6, 0); // instead of CRC8
 
-  HAL_GPIO_WritePin(GPIOI, GPIO_PIN_2, 0); // Set Transmitter off **** new ****
+  HAL_GPIO_WritePin(GPIOI, GPIO_PIN_2, 0);  // Set Transmitter off **** new ****
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_15, 1); // Set CW key released **** new ****
   OutPE4306(AttenValRX);
-  HAL_GPIO_WritePin(GPIOI, GPIO_PIN_0, 0); // Set Pre-PA off
   Mute(false);
   SGUI_WindowShow(1); // main-window anzeigen
   oldpointer = NULL;
 
-  HAL_GPIO_WritePin(GPIOI, GPIO_PIN_0, 0); // Set Pre PA off
   HAL_GPIO_WritePin(GPIOI, GPIO_PIN_2, 0); // Set Transmitter off
   if (tune) {
     UB_Uart_SendByte(COM6, 4);            // Mic Volume
@@ -3341,7 +3928,7 @@ void btn_PTT_End(bool aktiv) {
     UB_Uart_SendByte(COM6, 0);
     UB_Uart_SendByte(COM6, 0);
     UB_Uart_SendByte(COM6, 0);
-    UB_Uart_SendByte(COM6, 0); //    instead of CRC8
+    UB_Uart_SendByte(COM6, 0); // instead of CRC8
     tune = 0;
   }
   OutPE4306(AttenValRX);
